@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+
+# Xcode / SwiftPM
+build/
+DerivedData/
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
+xcuserdata/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Generated Xcode project (XcodeGen owns it)
+*.xcodeproj
+
+# Editor (TypeScript)
+node_modules/
+Editor/dist/
+.pnpm-store/
+
+# Local data and secrets
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.env
+.env.*
+Fixtures/generated/

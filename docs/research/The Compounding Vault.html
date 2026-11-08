@@ -1,0 +1,1712 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>The Compounding Vault</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one reading column (~68ch) with a sticky contents rail on wide screens; figures break out wider than the text.
+   Color encodes provenance everywhere: teal = your writing, ochre = sources, violet = AI-derived, rose = private. */
+:root {
+  --bg: #F2F3EF;
+  --panel: #FAFBF8;
+  --ink: #17191E;
+  --muted: #5B6169;
+  --rule: #D5D8D1;
+  --soft: #E5E8E1;
+  --human: #0E7464;
+  --human-t: #D3EAE3;
+  --source: #A06512;
+  --source-t: #F3E3C6;
+  --ai: #6146CC;
+  --ai-t: #E3DDFA;
+  --private: #B0384A;
+  --private-t: #F6D9DE;
+  --sans: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Literata", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101216; --panel: #171A1F; --ink: #E5E7E3; --muted: #9AA1A8; --rule: #2C3138; --soft: #22262C;
+    --human: #3FC0A8; --human-t: #15342E; --source: #E2A84C; --source-t: #392C15;
+    --ai: #A691FF; --ai-t: #28224A; --private: #F07A8B; --private-t: #3D1D24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101216; --panel: #171A1F; --ink: #E5E7E3; --muted: #9AA1A8; --rule: #2C3138; --soft: #22262C;
+  --human: #3FC0A8; --human-t: #15342E; --source: #E2A84C; --source-t: #392C15;
+  --ai: #A691FF; --ai-t: #28224A; --private: #F07A8B; --private-t: #3D1D24;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.62;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--human); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible { outline: 2px solid var(--human); outline-offset: 2px; border-radius: 2px; }
+
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 48px;
+  padding-block: 40px 96px;
+}
+@media (min-width: 1100px) {
+  .shell { grid-template-columns: 200px minmax(0, 1fr); }
+}
+.rail { display: none; }
+@media (min-width: 1100px) {
+  .rail { display: block; }
+  .rail nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); }
+}
+.rail h2 {
+  font: 600 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 14px;
+}
+.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s; }
+.rail li { counter-increment: s; }
+.rail a {
+  display: grid; grid-template-columns: 26px 1fr; padding: 5px 0;
+  font: 500 14px/1.3 var(--sans); color: var(--muted); text-decoration: none;
+}
+.rail a::before { content: counter(s, decimal-leading-zero); font: 400 11px/1.6 var(--mono); color: var(--rule); }
+.rail a:hover { color: var(--ink); }
+
+main { min-width: 0; }
+.col { max-width: 700px; }
+
+/* hero */
+.kicker { font: 600 12px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; }
+h1 {
+  font: 800 clamp(44px, 8vw, 84px)/0.94 var(--sans);
+  letter-spacing: -0.035em; margin: 0 0 22px; text-wrap: balance;
+}
+.dek { font: 400 21px/1.5 var(--serif); color: var(--ink); margin: 0 0 30px; max-width: 640px; }
+.strata-key { display: grid; gap: 0; margin: 0 0 14px; max-width: 700px; border-radius: 6px; overflow: hidden; }
+.strata-key span { display: block; height: 7px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0 0 8px; font: 500 13px/1.3 var(--sans); color: var(--muted); }
+.legend b { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+.meta { font: 400 12.5px/1.5 var(--mono); color: var(--muted); margin: 18px 0 0; }
+
+/* verdict sheet */
+.verdicts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden;
+  margin: 44px 0 8px;
+}
+.verdicts div { background: var(--panel); padding: 18px 20px 20px; min-width: 0; }
+.verdicts dt { font: 600 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+.verdicts dd { margin: 0; font: 500 15.5px/1.45 var(--sans); }
+
+/* sections */
+section { padding-top: 72px; }
+h2.sec {
+  font: 700 clamp(28px, 4vw, 38px)/1.1 var(--sans); letter-spacing: -0.02em;
+  margin: 0 0 20px; text-wrap: balance; max-width: 760px;
+}
+.secnum { display: block; font: 400 12px/1 var(--mono); color: var(--muted); margin-bottom: 14px; letter-spacing: .04em; }
+h3 { font: 700 20px/1.25 var(--sans); letter-spacing: -0.01em; margin: 36px 0 10px; text-wrap: balance; }
+p { margin: 0 0 18px; }
+.lede { font-size: 19px; }
+strong { font-weight: 600; }
+code { font-family: var(--mono); font-size: .84em; background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+
+pre {
+  font: 400 13px/1.6 var(--mono); background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 0 0 22px; max-width: 760px;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--muted); }
+
+/* tables */
+.tw { overflow-x: auto; margin: 6px 0 26px; max-width: 860px; }
+table { border-collapse: collapse; width: 100%; font: 400 14.5px/1.45 var(--sans); }
+th { text-align: left; font: 600 11px/1.3 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 0 14px 10px 0; border-bottom: 1px solid var(--ink); vertical-align: bottom; }
+td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td:first-child { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; font: 600 11.5px/1 var(--sans); padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
+.go { background: var(--human-t); color: var(--human); }
+.no { background: var(--private-t); color: var(--private); }
+
+/* figures */
+figure.dg {
+  margin: 30px 0 34px; background: var(--panel); border: 1px solid var(--rule);
+  border-radius: 14px; padding: 22px 22px 18px; max-width: 920px;
+}
+.dg .scroll { overflow-x: auto; }
+.dg svg { display: block; width: 100%; height: auto; min-width: 620px; color: var(--ink); font-family: var(--sans); }
+.dg.narrow svg { min-width: 520px; }
+figcaption { font: 400 14px/1.5 var(--sans); color: var(--muted); margin-top: 14px; max-width: 700px; }
+figcaption b { font: 600 11px/1 var(--mono); letter-spacing: .08em; color: var(--ink); margin-right: 8px; }
+
+/* svg vocabulary */
+svg text { fill: var(--ink); }
+.t13 { font-size: 13px; font-weight: 600; }
+.t12 { font-size: 12px; }
+.t11 { font-size: 11.5px; }
+.t10 { font-size: 10.5px; letter-spacing: .12em; font-weight: 600; }
+.mono { font-family: var(--mono); }
+.serif { font-family: var(--serif); font-style: italic; }
+svg .mut { fill: var(--muted); }
+svg .halo { paint-order: stroke; stroke: var(--panel); stroke-width: 5px; stroke-linejoin: round; }
+.f-ink { fill: var(--ink); } .f-panel { fill: var(--panel); } .f-soft { fill: var(--soft); } .f-rule { fill: var(--rule); } .f-muted { fill: var(--muted); }
+.f-human { fill: var(--human); } .f-human-t { fill: var(--human-t); }
+.f-source { fill: var(--source); } .f-source-t { fill: var(--source-t); }
+.f-ai { fill: var(--ai); } .f-ai-t { fill: var(--ai-t); }
+.f-private { fill: var(--private); } .f-private-t { fill: var(--private-t); }
+svg text.f-human { fill: var(--human); } svg text.f-source { fill: var(--source); } svg text.f-ai { fill: var(--ai); } svg text.f-private { fill: var(--private); }
+.s-ink { stroke: var(--ink); } .s-muted { stroke: var(--muted); } .s-rule { stroke: var(--rule); } .s-panel { stroke: var(--panel); }
+.s-human { stroke: var(--human); } .s-source { stroke: var(--source); } .s-ai { stroke: var(--ai); } .s-private { stroke: var(--private); }
+.nf { fill: none; }
+
+/* build stages */
+.stages { list-style: none; margin: 10px 0 26px; padding: 0; max-width: 780px; counter-reset: st; }
+.stages li { counter-increment: st; display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 0 18px; position: relative; padding-bottom: 26px; }
+.stages li::before {
+  content: counter(st); grid-row: 1 / span 3; width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center; font: 700 17px/1 var(--sans); background: var(--ink); color: var(--bg);
+}
+.stages li::after { content: ""; position: absolute; left: 20px; top: 46px; bottom: 4px; width: 2px; background: var(--rule); }
+.stages li:last-child::after { display: none; }
+.stages .when { font: 600 11px/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+.stages h4 { font: 700 18px/1.3 var(--sans); margin: 4px 0 6px; }
+.stages p { margin: 0 0 6px; font-size: 16px; }
+.stages .done { font: 500 14px/1.45 var(--sans); color: var(--human); }
+
+.callout { border-left: 3px solid var(--ink); padding: 4px 0 4px 18px; margin: 26px 0; font: 500 19px/1.5 var(--serif); font-style: italic; max-width: 680px; }
+.confidence { display: grid; gap: 12px; margin: 10px 0 0; padding: 0; list-style: none; max-width: 760px; }
+.confidence li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; font: 400 15px/1.5 var(--sans); padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.confidence span { font: 600 11px/1.6 var(--sans); letter-spacing: .12em; text-transform: uppercase; }
+.confidence .hi { color: var(--human); } .confidence .md { color: var(--source); } .confidence .lo { color: var(--private); }
+footer { margin-top: 80px; padding-top: 22px; border-top: 1px solid var(--rule); font: 400 13px/1.6 var(--sans); color: var(--muted); max-width: 760px; }
+
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  .dek { font-size: 18px; }
+  figure.dg { padding: 16px 12px 14px; margin-inline: -4px; }
+  .confidence li { grid-template-columns: 1fr; gap: 2px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+</style>
+
+<!-- shared SVG definitions -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="a-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-ink"/></marker>
+    <marker id="a-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-muted"/></marker>
+    <marker id="a-human" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-human"/></marker>
+    <marker id="a-ai" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-ai"/></marker>
+    <marker id="a-private" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-private"/></marker>
+    <marker id="bar-private" viewBox="0 0 4 16" refX="2" refY="8" markerWidth="4" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto"><rect x="0" y="0" width="4" height="16" class="f-private"/></marker>
+    <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" class="f-soft"/><line x1="0" y1="0" x2="0" y2="7" class="s-rule" stroke-width="2"/></pattern>
+  </defs>
+</svg>
+
+<div class="shell">
+  <aside class="rail" aria-label="Contents">
+    <nav>
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#method">What compounds</a></li>
+        <li><a href="#structure">Vault structure</a></li>
+        <li><a href="#habits">Habits and output</a></li>
+        <li><a href="#sync">Free sync</a></li>
+        <li><a href="#ai">AI in the vault</a></li>
+        <li><a href="#retrieval">Retrieval</a></li>
+        <li><a href="#beyond">Beyond Obsidian</a></li>
+        <li><a href="#corpus">What you need</a></li>
+        <li><a href="#build">Build order</a></li>
+        <li><a href="#confidence">How sure</a></li>
+      </ol>
+    </nav>
+  </aside>
+
+  <main>
+    <header class="col">
+      <p class="kicker">Research synthesis · Obsidian · November 2026</p>
+      <h1>The Compounding Vault</h1>
+      <p class="dek">How to set up Obsidian so it keeps paying off for years: the method, the folder structure, free sync and history, AI agents, search, and what an intelligent personal corpus actually needs.</p>
+      <div class="strata-key" aria-hidden="true">
+        <span class="f-human" style="background:var(--human)"></span>
+        <span style="background:var(--source)"></span>
+        <span style="background:var(--ai)"></span>
+        <span style="background:var(--private)"></span>
+      </div>
+      <div class="legend" aria-label="Color key used in every figure">
+        <span><b style="background:var(--human)"></b>Your writing</span>
+        <span><b style="background:var(--source)"></b>Sources you collected</span>
+        <span><b style="background:var(--ai)"></b>AI-derived</span>
+        <span><b style="background:var(--private)"></b>Private or denied</span>
+      </div>
+      <p class="meta">Consolidates two research reports built from nine research threads. Sources are linked inline.</p>
+    </header>
+
+    <dl class="verdicts">
+      <div><dt>Method</dt><dd>Write your own claims in your own words, link them, and keep a habit that pulls them into output. Which method you follow matters less.</dd></div>
+      <div><dt>Structure</dt><dd>Few flat folders sorted by kind of note. Topics live in links and a <code>categories</code> property, viewed through core Bases.</dd></div>
+      <div><dt>Sync, $0</dt><dd>iCloud (iPhone) or Syncthing-Fork (Android) for live sync, git on the Mac for history, Time Machine for backup.</dd></div>
+      <div><dt>AI</dt><dd>Run Claude Code in the vault folder. It reads everything and writes only to <code>AI/</code>, enforced by deny rules.</dd></div>
+      <div><dt>Search</dt><dd>No vector database until plain search misses reworded notes, around 500k words. Then add qmd, locally.</dd></div>
+      <div><dt>Provenance</dt><dd>Every note carries an <code>origin</code>. AI text never counts as evidence until you rewrite and accept it.</dd></div>
+    </dl>
+
+    <!-- 1 -->
+    <section id="method">
+      <span class="secnum">01 / Method</span>
+      <h2 class="sec">A vault compounds through authorship and output, not through which method you pick</h2>
+      <div class="col">
+        <p class="lede">The well-known methods fall into two families. Thinking systems (Zettelkasten as Sönke Ahrens describes it, Andy Matuschak's <a href="https://notes.andymatuschak.org/Evergreen_notes">evergreen notes</a>, Steph Ango's <a href="https://stephango.com/vault">bottom-up vault</a>, Nick Milo's Linking Your Thinking) get their value from rewriting and linking ideas. Retrieval systems (Tiago Forte's <a href="https://fortelabs.com/blog/para/">PARA</a>, Johnny.Decimal) get theirs from finding things fast for current work. Both are useful. One variable matters more than the choice between them.</p>
+        <p>That variable is a <strong>production loop</strong>. Every success story (Luhmann, Matuschak, Simon Willison, an academic who credits his vault with 50,000 words in 2025) has regular output that pulls notes through processing. The failures describe storage with nothing pulling. Joan Westenberg <a href="https://westenberg.beehiiv.com/p/i-deleted-my-second-brain">deleted about 10,000 notes</a> and called her archive a "mausoleum." Christian Tietze named the pattern in 2014 as the <a href="https://zettelkasten.de/posts/collectors-fallacy/">collector's fallacy</a>: having material at hand feels like knowing it.</p>
+      </div>
+
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 380" role="img" aria-label="The compounding loop: captures are rewritten as claims within days, linked with reasons, pulled into output, and the gaps output reveals drive new captures. Captures that skip the rewrite pile up as sediment.">
+          <!-- inflow streams -->
+          <path d="M150 105 C 262 105, 292 175, 384 175" class="nf s-source" stroke-width="2.5"/>
+          <path d="M150 175 H 384" class="nf s-ai" stroke-width="2.5"/>
+          <path d="M150 245 C 262 245, 292 175, 384 175" class="nf s-human" stroke-width="2.5"/>
+          <text x="24" y="109" class="t12">Web clippings</text>
+          <text x="24" y="179" class="t12">AI conversations</text>
+          <text x="24" y="249" class="t12">Your fleeting notes</text>
+
+          <!-- the loop -->
+          <path d="M391.0 162.7 A 190 118 0 0 1 553.6 58.1" class="nf s-human" stroke-width="2.5" marker-end="url(#a-human)"/>
+          <path d="M599.9 57.6 A 190 118 0 0 1 768.2 158.6" class="nf s-human" stroke-width="2.5" marker-end="url(#a-human)"/>
+          <path d="M769.0 187.3 A 190 118 0 0 1 606.4 291.9" class="nf s-human" stroke-width="2.5" marker-end="url(#a-human)"/>
+          <path d="M560.1 292.4 A 190 118 0 0 1 391.8 191.4" class="nf s-human" stroke-width="2.5" marker-end="url(#a-human)" stroke-dasharray="1 0"/>
+
+          <circle cx="390" cy="175" r="9" class="f-human s-panel" stroke-width="3"/>
+          <circle cx="580" cy="57" r="9" class="f-human s-panel" stroke-width="3"/>
+          <circle cx="770" cy="175" r="9" class="f-human s-panel" stroke-width="3"/>
+          <circle cx="580" cy="293" r="9" class="f-human s-panel" stroke-width="3"/>
+
+          <text x="408" y="171" class="t13">Capture</text>
+          <text x="408" y="187" class="t11 mut">cheap and daily</text>
+          <text x="580" y="88" class="t13" text-anchor="middle">Claim</text>
+          <text x="580" y="104" class="t11 mut" text-anchor="middle">a note in your own words</text>
+          <text x="752" y="171" class="t13" text-anchor="end">Network</text>
+          <text x="752" y="187" class="t11 mut" text-anchor="end">linked, with reasons</text>
+          <text x="580" y="256" class="t13" text-anchor="middle">Output</text>
+          <text x="580" y="272" class="t11 mut" text-anchor="middle">essay · decision · TIL</text>
+
+          <text x="580" y="150" class="t12 serif mut" text-anchor="middle">each pass adds edges</text>
+
+          <text x="436" y="86" class="t11 halo" text-anchor="end">rewrite within days</text>
+          <text x="724" y="86" class="t11 halo">link, say why</text>
+          <text x="724" y="270" class="t11 halo">pull into real work</text>
+          <text x="500" y="314" class="t11 halo" text-anchor="middle">gaps show what to capture</text>
+
+          <!-- sediment -->
+          <path d="M384 184 C 362 250, 335 296, 304 316" class="nf s-muted" stroke-width="1.6" stroke-dasharray="4 4" marker-end="url(#a-muted)"/>
+          <text x="342" y="240" class="t11 mut halo" text-anchor="end">skipped</text>
+          <rect x="74" y="322" width="222" height="9" rx="2" class="f-source-t"/>
+          <rect x="62" y="334" width="246" height="9" rx="2" class="f-ai-t"/>
+          <rect x="50" y="346" width="270" height="9" rx="2" class="f-source-t"/>
+          <rect x="40" y="358" width="290" height="9" rx="2" class="f-ai-t"/>
+          <text x="344" y="352" class="t12" font-weight="600">Sediment: captured, never rewritten</text>
+          <text x="344" y="368" class="t11 mut">182 of 281 fleeting notes in one audited vault</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 1</b>Value compounds only around the loop. Anything that skips the rewrite step piles up below it, however well it is tagged or linked.</figcaption>
+      </figure>
+
+      <div class="col">
+        <p>One Obsidian user <a href="https://dev.to/sho7650/my-obsidian-vault-made-21-permanent-notes-in-35-years-so-i-redesigned-it-2229">audited 3.5 years of notes</a> and found 21 permanent notes. Their last 90 days of inflow show the problem at a glance.</p>
+      </div>
+
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 136" role="img" aria-label="One user's 90-day inflow: 79 web clippings and 142 AI conversations or summaries against a single fleeting note of their own.">
+          <rect x="24" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="39" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="54" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="69" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="84" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="99" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="114" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="129" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="144" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="159" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="174" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="189" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="204" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="219" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="234" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="249" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="264" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="279" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="294" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="309" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="324" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="339" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="354" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="369" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="384" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="399" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="414" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="429" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="444" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="459" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="474" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="489" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="504" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="519" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="534" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="549" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="564" y="24" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="24" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="39" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="54" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="69" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="84" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="99" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="114" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="129" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="144" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="159" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="174" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="189" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="204" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="219" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="234" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="249" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="264" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="279" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="294" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="309" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="324" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="339" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="354" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="369" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="384" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="399" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="414" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="429" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="444" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="459" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="474" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="489" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="504" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="519" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="534" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="549" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="564" y="39" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="24" y="54" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="39" y="54" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="54" y="54" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="69" y="54" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="84" y="54" width="11" height="11" rx="2" class="f-source"/>
+          <rect x="99" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="114" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="129" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="144" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="159" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="174" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="189" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="204" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="219" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="234" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="249" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="264" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="279" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="294" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="309" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="324" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="339" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="354" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="369" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="384" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="399" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="414" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="429" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="444" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="459" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="474" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="489" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="504" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="519" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="534" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="549" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="564" y="54" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="24" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="39" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="54" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="69" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="84" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="99" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="114" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="129" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="144" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="159" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="174" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="189" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="204" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="219" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="234" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="249" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="264" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="279" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="294" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="309" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="324" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="339" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="354" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="369" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="384" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="399" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="414" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="429" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="444" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="459" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="474" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="489" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="504" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="519" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="534" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="549" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="564" y="69" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="24" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="39" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="54" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="69" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="84" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="99" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="114" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="129" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="144" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="159" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="174" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="189" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="204" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="219" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="234" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="249" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="264" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="279" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="294" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="309" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="324" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="339" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="354" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="369" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="384" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="399" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="414" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="429" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="444" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="459" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="474" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="489" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="504" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="519" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="534" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="549" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="564" y="84" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="24" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="39" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="54" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="69" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="84" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="99" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="114" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="129" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="144" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="159" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="174" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="189" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="204" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="219" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="234" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="249" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="264" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="279" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="294" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="309" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="324" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="339" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="354" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="369" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="384" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="399" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="414" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="429" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="444" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="459" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="474" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="489" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="504" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="519" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="534" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="549" y="99" width="11" height="11" rx="2" class="f-ai"/>
+          <rect x="564" y="99" width="11" height="11" rx="2" class="f-human"/>
+          <circle cx="569.5" cy="104.5" r="11" class="nf s-human" stroke-width="2"/>
+          <text x="616" y="44" font-size="26" font-weight="800" class="f-source">79</text>
+          <text x="666" y="42" class="t12">web clippings</text>
+          <text x="616" y="80" font-size="26" font-weight="800" class="f-ai">142</text>
+          <text x="678" y="78" class="t12">AI conversations and summaries</text>
+          <text x="616" y="116" font-size="26" font-weight="800" class="f-human">1</text>
+          <text x="644" y="114" class="t12">fleeting note of their own</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 2</b>Each square is one item that entered the vault in 90 days. The circled square is the only one the owner wrote. Their fix was to write their own claims and let AI only fact-check and argue back.</figcaption>
+      </figure>
+
+      <div class="col">
+        <p>The cognitive science supports the steps the thinking methods insist on. A meta-analysis of 445 effect sizes found generated material is remembered about 9% better than material that is only read, roughly d = 0.40 (<a href="https://pubmed.ncbi.nlm.nih.gov/17645161/">Bertsch et al. 2007</a>), though mostly with word lists rather than notes. Dunlosky's review rates <a href="https://www.psychologicalscience.org/news/releases/which-study-strategies-make-the-grade.html">practice testing and spacing as high utility, and highlighting and rereading as low</a>. The popular claim that longhand beats typing failed replication (<a href="https://www.pubmed.gov/33539228/">Urry et al. 2021</a>).</p>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Practice</th><th>What the evidence says</th></tr></thead>
+          <tbody>
+            <tr><td>Rewrite an idea in your own words as a standalone note</td><td>Supported by the generation effect and generative learning</td></tr>
+            <tr><td>Link a new note and say why it connects</td><td>Supported: elaboration ties new material to what you know</td></tr>
+            <tr><td>Revisit notes on a schedule, recalling before rereading</td><td>Supported: spacing and retrieval practice, both rated high utility</td></tr>
+            <tr><td>Highlight-then-bold summarizing layers</td><td>Weak for learning; may still help you find things later</td></tr>
+            <tr><td>Atomic notes with concept titles</td><td>Untested; a reasonable design argument</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p>Expect a slow payoff. Tietze and Edmund Gröpl reconstruct Luhmann's output at roughly <a href="https://christiantietze.de/posts/2026/03/zettelkasten-productivity-books-written-per-books-ingested/">one book written per hundred read</a>. Most of what you capture will never reach output, and that is normal. It is the strongest argument for keeping the system cheap to run.</p>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section id="structure">
+      <span class="secnum">02 / Structure</span>
+      <h2 class="sec">Sort folders by note type and by who may write there</h2>
+      <div class="col">
+        <p class="lede">Experienced users converge on a few shallow folders sorted by what kind of file a note is, never by subject, because a note fits one folder but belongs to many topics. Ango keeps "few folders, no nested sub-folders" (<a href="https://stephango.com/vault">Ango</a>). Milo's rule is that "structure must be earned" (<a href="https://blog.linkingyourthinking.com/notes/ace-folder-framework">LYT</a>).</p>
+        <p>Once AI agents work in the vault, folders take on a second job: they mark provenance and set permissions. Agents read file paths, not tags, and deny rules need a folder to target. So the final layout moves your own writing from the vault root into <code>Notes/</code> and adds an AI-owned layer.</p>
+      </div>
+
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 456" role="img" aria-label="The vault as five layers. The agent writes only to AI/, reads Notes and Clippings, cannot edit the rulebook and is denied Private. Changes to your notes pass through Proposals and your acceptance. Answers may cite only your notes and sources.">
+          <!-- governance -->
+          <rect x="48" y="24" width="592" height="50" rx="10" fill="url(#hatch)" class="s-ink" stroke-width="1.2"/>
+          <text x="66" y="54" class="t13 mono">AGENTS.md + .claude/</text>
+          <text x="262" y="54" class="t12 mut">rulebook, skills and deny list; you edit, the agent only reads</text>
+
+          <!-- derived -->
+          <rect x="48" y="92" width="592" height="80" rx="10" class="f-ai-t s-ai" stroke-width="1.4"/>
+          <text x="66" y="122" font-size="15" font-weight="700" class="mono f-ai">AI/</text>
+          <text x="66" y="142" class="t12 mono">index.md · log.md · Wiki/ · Digests/ · Proposals/</text>
+          <text x="66" y="160" class="t12 mut">derived and regenerable: delete it and rebuild</text>
+          <text x="622" y="122" class="t12 mono f-ai" text-anchor="end">origin: ai</text>
+
+          <!-- gate -->
+          <rect x="282" y="180" width="5" height="24" rx="1" class="f-ink"/>
+          <rect x="313" y="180" width="5" height="24" rx="1" class="f-ink"/>
+          <line x1="300" y1="174" x2="300" y2="207" class="s-ink" stroke-width="1.8" marker-end="url(#a-ink)"/>
+          <text x="330" y="197" class="t12">Proposals/ → you rewrite and accept → <tspan class="mono f-human">origin: ai-accepted</tspan></text>
+
+          <!-- human -->
+          <rect x="48" y="212" width="592" height="80" rx="10" class="f-human-t s-human" stroke-width="1.4"/>
+          <text x="66" y="242" font-size="15" font-weight="700" class="mono f-human">Notes/  Daily/  References/</text>
+          <text x="66" y="262" class="t12">your claims, captures, and one note per book, person or paper</text>
+          <text x="66" y="280" class="t12 mut">agents read; changes arrive only as proposals</text>
+          <text x="622" y="242" class="t12 mono f-human" text-anchor="end">origin: human</text>
+
+          <!-- raw -->
+          <rect x="48" y="304" width="592" height="70" rx="10" class="f-source-t s-source" stroke-width="1.4"/>
+          <text x="66" y="334" font-size="15" font-weight="700" class="mono f-source">Clippings/</text>
+          <text x="66" y="356" class="t12">Web Clipper, Readwise, transcripts; immutable and untrusted</text>
+          <text x="622" y="334" class="t12 mono f-source" text-anchor="end">origin: source</text>
+
+          <!-- private -->
+          <rect x="48" y="386" width="592" height="50" rx="10" class="f-private-t s-private" stroke-width="1.4"/>
+          <text x="66" y="416" font-size="15" font-weight="700" class="mono f-private">Private/</text>
+          <text x="160" y="416" class="t12">sensitive notes; local models only</text>
+
+          <!-- evidence bracket -->
+          <path d="M42 214 H 34 V 372 H 42" class="nf s-muted" stroke-width="1.5"/>
+          <text transform="translate(24 293) rotate(-90)" class="t10 mut" text-anchor="middle">EVIDENCE</text>
+
+          <!-- agent -->
+          <line x1="748.7" y1="200.5" x2="660" y2="69.6" class="s-private" stroke-width="1.6" marker-end="url(#bar-private)"/>
+          <line x1="740.4" y1="208.1" x2="648" y2="133.6" class="s-ai" stroke-width="2.4" marker-end="url(#a-ai)"/>
+          <line x1="732.5" y1="238.0" x2="648" y2="251.7" class="s-muted" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a-muted)"/>
+          <line x1="741.2" y1="256.8" x2="648" y2="337.3" class="s-muted" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#a-muted)"/>
+          <line x1="748.4" y1="263.2" x2="660" y2="390.8" class="s-private" stroke-width="1.6" marker-end="url(#bar-private)"/>
+          <circle cx="770" cy="232" r="38" class="f-panel s-ai" stroke-width="2.2"/>
+          <text x="770" y="230" class="t13 mono" text-anchor="middle">agent</text>
+          <text x="770" y="246" class="t11 mut" text-anchor="middle">Claude Code</text>
+
+          <text x="666" y="58" class="t11 f-private halo">no edits</text>
+          <text x="654" y="124" class="t11 f-ai halo" font-weight="600">writes</text>
+          <text x="654" y="240" class="t11 mut halo">reads</text>
+          <text x="652" y="360" class="t11 mut halo">reads</text>
+          <text x="666" y="412" class="t11 f-private halo">denied</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 3</b>The agent writes only to <code>AI/</code>. Your notes change only through proposals you accept, and answers may cite only your notes and your sources (the bracket). Paths make this enforceable with deny rules.</figcaption>
+      </figure>
+
+      <pre><code>Vault/
+  AGENTS.md          <span class="c"># rulebook; CLAUDE.md holds one line: @AGENTS.md</span>
+  .claude/           <span class="c"># skills/ (kepano/obsidian-skills) + settings.json deny rules</span>
+  Notes/             <span class="c"># your evergreen notes, essays, decisions, timestamped captures</span>
+  Daily/             <span class="c"># YYYY-MM-DD; capture target for CLI/URI append</span>
+  References/        <span class="c"># one note per book, person, paper, tool, named by real title</span>
+  Clippings/         <span class="c"># Web Clipper, Readwise, transcripts; agents read, never edit</span>
+  AI/                <span class="c"># index.md, log.md, Wiki/&lt;domain&gt;/, Digests/, Review/, Proposals/</span>
+  Private/           <span class="c"># denied to cloud agents</span>
+  Projects/  Archive/  Attachments/  Templates/</code></pre>
+
+      <div class="col">
+        <h3>Properties do what deep folders and tag trees used to</h3>
+        <p>Properties are plain YAML (public since 1.4.5, August 2023). Core <a href="https://obsidian.md/help/bases">Bases</a> (public since 1.9.10, August 2025; kanban since 1.14.0) turns them into tables, cards and boards. All Bases data stays in your Markdown files, so a broken base loses only a view. Ango's main organizer is a <code>categories</code> property whose values are links to category notes, each of which embeds a base. Nested properties are unsupported, and the singular keys <code>tag</code>, <code>alias</code> and <code>cssclass</code> stopped working in 1.9.</p>
+      </div>
+      <pre><code>---
+origin: human               <span class="c"># human | source | ai | ai-accepted  (stamped by templates and agents)</span>
+categories: ["[[Books]]"]   <span class="c"># links; each category note embeds a base</span>
+created: 2026-11-03
+tags: [drafts]              <span class="c"># few, flat, plural; workflow states only</span>
+aliases: [Alt name]
+author: ["[[Ted Chiang]]"]  <span class="c"># per-category fields: author, url, rating, status, start, end</span>
+as_of: 2026-11-03           <span class="c"># optional: for claims that can go stale</span>
+supersedes: ["[[Old view]]"] <span class="c"># optional: replace beliefs, never overwrite them</span>
+---</code></pre>
+      <div class="col">
+        <p class="callout">If it is a thing you might write about, link it. If it is an attribute you filter or sort by, make it a property. If it is a temporary workflow state, a tag is fine.</p>
+        <p>Give your own notes claim-style titles that work "<a href="https://notes.andymatuschak.org/Evergreen_note_titles_are_like_APIs">like APIs</a>." Name reference notes by their real title. "Link profusely," link first mentions, and leave unresolved links as breadcrumbs (<a href="https://stephango.com/vault">Ango</a>). Build a map-of-content note only when a cluster gets too big to hold in your head. Keep content in standard Markdown and flat YAML: avoid inline <code>key:: value</code> fields and DataviewJS, whose output exists only inside Obsidian's rendered view. Ango calls this <a href="https://stephango.com/file-over-app">file over app</a>.</p>
+        <p>Core features now do most of what plugins used to: Bases, the official CLI (1.12.4, February 2026), append-under-heading commands (1.15), iOS Quick Capture and Web Clipper. Build new structured views in Bases and keep Dataview only for queries Bases can't express. Forum reports put core Obsidian comfortably at 10,000 to 20,000 notes; slow vaults usually trace to plugin load. Add a plugin only when the same pain has come up several times, and check its last commit first.</p>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section id="habits">
+      <span class="secnum">03 / Habits</span>
+      <h2 class="sec">Capture often, consolidate weekly, maintain rarely, and publish at a low bar</h2>
+      <div class="col">
+        <p class="lede">The habits that last are tiered. Ango captures each thought as a timestamped note linked to the day, compiles fragments every few days, reviews those monthly, reviews the monthly reviews yearly with a 40-questions template, and every few months uses the random-note hotkey to revisit old ideas and add missing links (<a href="https://stephango.com/vault">Ango</a>).</p>
+      </div>
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 300" role="img" aria-label="A year of review rhythm: daily capture, weekly consolidation, monthly reviews, quarterly maintenance passes and one yearly review.">
+          <line x1="200" y1="50" x2="860" y2="50" class="s-rule" stroke-width="1"/>
+          <rect x="200.40" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="202.21" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="204.02" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="205.83" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="207.64" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="209.45" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="211.25" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="213.06" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="214.87" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="216.68" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="218.49" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="220.29" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="222.10" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="223.91" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="225.72" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="227.53" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="229.34" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="231.14" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="232.95" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="234.76" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="236.57" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="238.38" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="240.18" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="241.99" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="243.80" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="245.61" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="247.42" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="249.23" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="251.03" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="252.84" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="254.65" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="256.46" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="258.27" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="260.08" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="261.88" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="263.69" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="265.50" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="267.31" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="269.12" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="270.92" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="272.73" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="274.54" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="276.35" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="278.16" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="279.97" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="281.77" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="283.58" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="285.39" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="287.20" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="289.01" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="290.82" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="292.62" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="294.43" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="296.24" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="298.05" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="299.86" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="301.66" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="303.47" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="305.28" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="307.09" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="308.90" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="310.71" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="312.51" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="314.32" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="316.13" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="317.94" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="319.75" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="321.55" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="323.36" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="325.17" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="326.98" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="328.79" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="330.60" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="332.40" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="334.21" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="336.02" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="337.83" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="339.64" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="341.45" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="343.25" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="345.06" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="346.87" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="348.68" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="350.49" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="352.29" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="354.10" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="355.91" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="357.72" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="359.53" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="361.34" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="363.14" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="364.95" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="366.76" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="368.57" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="370.38" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="372.18" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="373.99" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="375.80" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="377.61" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="379.42" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="381.23" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="383.03" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="384.84" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="386.65" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="388.46" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="390.27" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="392.08" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="393.88" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="395.69" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="397.50" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="399.31" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="401.12" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="402.92" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="404.73" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="406.54" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="408.35" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="410.16" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="411.97" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="413.77" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="415.58" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="417.39" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="419.20" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="421.01" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="422.82" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="424.62" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="426.43" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="428.24" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="430.05" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="431.86" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="433.66" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="435.47" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="437.28" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="439.09" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="440.90" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="442.71" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="444.51" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="446.32" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="448.13" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="449.94" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="451.75" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="453.55" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="455.36" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="457.17" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="458.98" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="460.79" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="462.60" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="464.40" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="466.21" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="468.02" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="469.83" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="471.64" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="473.45" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="475.25" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="477.06" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="478.87" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="480.68" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="482.49" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="484.29" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="486.10" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="487.91" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="489.72" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="491.53" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="493.34" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="495.14" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="496.95" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="498.76" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="500.57" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="502.38" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="504.18" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="505.99" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="507.80" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="509.61" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="511.42" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="513.23" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="515.03" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="516.84" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="518.65" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="520.46" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="522.27" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="524.08" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="525.88" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="527.69" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="529.50" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="531.31" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="533.12" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="534.92" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="536.73" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="538.54" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="540.35" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="542.16" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="543.97" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="545.77" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="547.58" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="549.39" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="551.20" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="553.01" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="554.82" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="556.62" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="558.43" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="560.24" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="562.05" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="563.86" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="565.66" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="567.47" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="569.28" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="571.09" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="572.90" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="574.71" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="576.51" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="578.32" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="580.13" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="581.94" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="583.75" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="585.55" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="587.36" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="589.17" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="590.98" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="592.79" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="594.60" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="596.40" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="598.21" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="600.02" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="601.83" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="603.64" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="605.45" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="607.25" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="609.06" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="610.87" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="612.68" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="614.49" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="616.29" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="618.10" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="619.91" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="621.72" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="623.53" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="625.34" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="627.14" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="628.95" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="630.76" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="632.57" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="634.38" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="636.18" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="637.99" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="639.80" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="641.61" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="643.42" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="645.23" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="647.03" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="648.84" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="650.65" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="652.46" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="654.27" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="656.08" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="657.88" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="659.69" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="661.50" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="663.31" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="665.12" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="666.92" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="668.73" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="670.54" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="672.35" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="674.16" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="675.97" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="677.77" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="679.58" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="681.39" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="683.20" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="685.01" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="686.82" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="688.62" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="690.43" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="692.24" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="694.05" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="695.86" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="697.66" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="699.47" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="701.28" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="703.09" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="704.90" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="706.71" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="708.51" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="710.32" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="712.13" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="713.94" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="715.75" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="717.55" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="719.36" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="721.17" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="722.98" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="724.79" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="726.60" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="728.40" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="730.21" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="732.02" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="733.83" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="735.64" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="737.45" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="739.25" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="741.06" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="742.87" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="744.68" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="746.49" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="748.29" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="750.10" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="751.91" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="753.72" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="755.53" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="757.34" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="759.14" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="760.95" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="762.76" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="764.57" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="766.38" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="768.18" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="769.99" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="771.80" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="773.61" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="775.42" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="777.23" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="779.03" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="780.84" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="782.65" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="784.46" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="786.27" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="788.08" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="789.88" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="791.69" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="793.50" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="795.31" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="797.12" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="798.92" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="800.73" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="802.54" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="804.35" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="806.16" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="807.97" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="809.77" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="811.58" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="813.39" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="815.20" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="817.01" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="818.82" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="820.62" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="822.43" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="824.24" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="826.05" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="827.86" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="829.66" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="831.47" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="833.28" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="835.09" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="836.90" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="838.71" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="840.51" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="842.32" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="844.13" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="845.94" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="847.75" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="849.55" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="851.36" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="853.17" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="854.98" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="856.79" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <rect x="858.60" y="38" width="0.7" height="12" rx="0.5" class="f-human" fill-opacity="0.55"/>
+          <text x="20" y="34" class="t13">Daily</text>
+          <text x="20" y="49" class="t11 mut">timestamped notes, clippings</text>
+          <line x1="200" y1="102" x2="860" y2="102" class="s-rule" stroke-width="1"/>
+          <rect x="205.25" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="217.94" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="230.63" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="243.32" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="256.02" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="268.71" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="281.40" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="294.09" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="306.78" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="319.48" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="332.17" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="344.86" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="357.55" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="370.25" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="382.94" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="395.63" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="408.32" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="421.02" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="433.71" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="446.40" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="459.09" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="471.78" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="484.48" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="497.17" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="509.86" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="522.55" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="535.25" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="547.94" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="560.63" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="573.32" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="586.02" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="598.71" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="611.40" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="624.09" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="636.78" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="649.48" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="662.17" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="674.86" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="687.55" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="700.25" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="712.94" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="725.63" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="738.32" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="751.02" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="763.71" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="776.40" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="789.09" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="801.78" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="814.48" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="827.17" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="839.86" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <rect x="852.55" y="84" width="2.2" height="18" rx="1.1" class="f-human" fill-opacity="0.8"/>
+          <text x="20" y="86" class="t13">Every few days to weekly</text>
+          <text x="20" y="101" class="t11 mut">turn fragments into titled,</text>
+          <text x="20" y="115" class="t11 mut">linked notes in your words</text>
+          <line x1="200" y1="154" x2="860" y2="154" class="s-rule" stroke-width="1"/>
+          <rect x="225.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="280.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="335.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="390.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="445.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="500.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="555.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="610.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="665.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="720.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="775.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <rect x="830.75" y="130" width="3.5" height="24" rx="1.75" class="f-human" fill-opacity="1"/>
+          <text x="20" y="138" class="t13">Monthly</text>
+          <text x="20" y="153" class="t11 mut">review the reviews</text>
+          <line x1="200" y1="206" x2="860" y2="206" class="s-rule" stroke-width="1"/>
+          <rect x="279.50" y="174" width="6" height="32" rx="2" class="f-human" fill-opacity="1"/>
+          <rect x="444.50" y="174" width="6" height="32" rx="2" class="f-human" fill-opacity="1"/>
+          <rect x="609.50" y="174" width="6" height="32" rx="2" class="f-human" fill-opacity="1"/>
+          <rect x="774.50" y="174" width="6" height="32" rx="2" class="f-human" fill-opacity="1"/>
+          <text x="20" y="190" class="t13">Quarterly</text>
+          <text x="20" y="205" class="t11 mut">random-note pass, inflow audit,</text>
+          <text x="20" y="219" class="t11 mut">belief diff</text>
+          <line x1="200" y1="258" x2="860" y2="258" class="s-rule" stroke-width="1"/>
+          <rect x="826.00" y="218" width="8" height="40" rx="2" class="f-human" fill-opacity="1"/>
+          <text x="20" y="242" class="t13">Yearly</text>
+          <text x="20" y="257" class="t11 mut">40-questions review</text>
+          <text x="227.5" y="288" class="t11 mono mut" text-anchor="middle">J</text>
+          <text x="282.5" y="288" class="t11 mono mut" text-anchor="middle">F</text>
+          <text x="337.5" y="288" class="t11 mono mut" text-anchor="middle">M</text>
+          <text x="392.5" y="288" class="t11 mono mut" text-anchor="middle">A</text>
+          <text x="447.5" y="288" class="t11 mono mut" text-anchor="middle">M</text>
+          <text x="502.5" y="288" class="t11 mono mut" text-anchor="middle">J</text>
+          <text x="557.5" y="288" class="t11 mono mut" text-anchor="middle">J</text>
+          <text x="612.5" y="288" class="t11 mono mut" text-anchor="middle">A</text>
+          <text x="667.5" y="288" class="t11 mono mut" text-anchor="middle">S</text>
+          <text x="722.5" y="288" class="t11 mono mut" text-anchor="middle">O</text>
+          <text x="777.5" y="288" class="t11 mono mut" text-anchor="middle">N</text>
+          <text x="832.5" y="288" class="t11 mono mut" text-anchor="middle">D</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 4</b>One year at each cadence. Each tick is one session. Capture should cost almost nothing; the rarer the session, the more thinking it does.</figcaption>
+      </figure>
+      <div class="col">
+        <p>A ritual can run without producing any thinking. One user's daily KPI section was filled every day while the "thoughts" section stayed empty. Judge a routine by what it produces. Matuschak points out that note-writing gives <a href="https://notes.andymatuschak.org/Note-writing_practices_provide_weak_feedback">weak feedback</a>: bad notes cause no immediate pain. Low-bar publishing fixes that. Willison's TILs ("did I just learn something?") produced <a href="https://simonwillison.net/2021/May/2/one-year-of-tils">148 posts across 43 topics</a> in their first year.</p>
+        <p>For a backlog, declare bankruptcy: move it to <code>Archive/</code> and write forward. Track a few proxies: notes you wrote yourself per month, the inflow mix (your writing against clippings and AI), output per input, and backlog age. Start minimal. Tie the vault to one real project, add structure only when friction demands it, and expect the first year to be about habit, not payoff.</p>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section id="sync">
+      <span class="secnum">04 / Free sync</span>
+      <h2 class="sec">Free sync works once live sync, history and backup are separate layers</h2>
+      <div class="col">
+        <p class="lede">Most sync horror stories share a few causes: iCloud on Windows, evicted cloud placeholders, two sync engines on one vault, edits on two devices before sync finished, and treating File Recovery as a backup. The rule: <strong>one sync engine per vault, one git writer, and history on the machine where agents run.</strong></p>
+      </div>
+
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 390" role="img" aria-label="Free sync stack. Live sync: iPhone through iCloud Drive, or Android directly through Syncthing-Fork, to the Mac. History: the Mac auto-commits the vault every 15 minutes into a .git folder outside sync, pushes to a private remote, and alerts on mass deletions. Agent work happens on a branch outside sync and merges after review. Backup: Time Machine copies the disk hourly.">
+          <!-- lane rules + captions -->
+          <line x1="40" y1="178" x2="860" y2="178" class="s-rule" stroke-dasharray="3 5"/>
+          <line x1="40" y1="286" x2="860" y2="286" class="s-rule" stroke-dasharray="3 5"/>
+          <text transform="translate(22 100) rotate(-90)" class="t10 mut" text-anchor="middle">LIVE SYNC</text>
+          <text transform="translate(22 232) rotate(-90)" class="t10 mut" text-anchor="middle">HISTORY</text>
+          <text transform="translate(22 336) rotate(-90)" class="t10 mut" text-anchor="middle">BACKUP</text>
+
+          <!-- mac column -->
+          <rect x="350" y="22" width="220" height="352" rx="14" class="f-panel s-ink" stroke-width="1.3"/>
+          <text x="460" y="45" class="t10" text-anchor="middle">MAC · THE ONLY GIT WRITER</text>
+          <rect x="380" y="62" width="160" height="44" rx="8" class="f-human-t s-human" stroke-width="1.3"/>
+          <text x="460" y="81" class="t13 mono" text-anchor="middle">Vault/</text>
+          <text x="460" y="97" class="t11 mut" text-anchor="middle">synced folder</text>
+          <rect x="380" y="196" width="160" height="44" rx="8" class="f-soft s-ink" stroke-width="1.1"/>
+          <text x="460" y="215" class="t13 mono" text-anchor="middle">.git/</text>
+          <text x="460" y="231" class="t11 mut" text-anchor="middle">outside the synced folder</text>
+          <rect x="380" y="306" width="160" height="44" rx="8" class="f-soft s-ink" stroke-width="1.1"/>
+          <text x="460" y="325" class="t13" text-anchor="middle">Disk</text>
+          <text x="460" y="341" class="t11 mut" text-anchor="middle">vault + .git</text>
+          <line x1="460" y1="108" x2="460" y2="193" class="s-ink" stroke-width="1.8" marker-end="url(#a-ink)"/>
+          <text x="470" y="146" class="t11">auto-commit</text>
+          <text x="470" y="161" class="t11 mut">every 15 min</text>
+
+          <!-- phones -->
+          <rect x="44" y="50" width="120" height="34" rx="17" class="f-panel s-ink" stroke-width="1.2"/>
+          <text x="104" y="71" class="t13" text-anchor="middle">iPhone</text>
+          <text x="104" y="104" class="t11 mut serif" text-anchor="middle">or</text>
+          <rect x="44" y="112" width="120" height="34" rx="17" class="f-panel s-ink" stroke-width="1.2"/>
+          <text x="104" y="133" class="t13" text-anchor="middle">Android</text>
+          <rect x="200" y="50" width="118" height="34" rx="17" class="f-soft s-muted" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="259" y="71" class="t12" text-anchor="middle" font-weight="600">iCloud Drive</text>
+          <text x="259" y="42" class="t11 mut" text-anchor="middle">“Keep Downloaded” on</text>
+          <line x1="168" y1="67" x2="196" y2="67" class="s-ink" stroke-width="1.6" marker-start="url(#a-ink)" marker-end="url(#a-ink)"/>
+          <line x1="322" y1="68" x2="376" y2="78" class="s-ink" stroke-width="1.6" marker-start="url(#a-ink)" marker-end="url(#a-ink)"/>
+          <line x1="168" y1="128" x2="376" y2="96" class="s-ink" stroke-width="1.6" marker-start="url(#a-ink)" marker-end="url(#a-ink)"/>
+          <text x="178" y="160" class="t11">Syncthing-Fork, peer to peer</text>
+
+          <!-- alarm -->
+          <rect x="44" y="196" width="170" height="44" rx="8" class="f-private-t s-private" stroke-width="1.3"/>
+          <text x="129" y="215" class="t12" text-anchor="middle" font-weight="600">Deletion alarm</text>
+          <text x="129" y="231" class="t11 mono" text-anchor="middle">&gt;20 deletes → notify</text>
+          <path d="M456 150 C 380 150, 300 218, 218 218" class="nf s-private" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a-private)"/>
+
+          <!-- agent branch -->
+          <rect x="650" y="56" width="200" height="50" rx="8" class="f-ai-t s-ai" stroke-width="1.3"/>
+          <text x="750" y="77" class="t12" text-anchor="middle" font-weight="600">Agent branch or worktree</text>
+          <text x="750" y="93" class="t11 mut" text-anchor="middle">outside the synced folder</text>
+          <path d="M700 108 C 700 168, 610 204, 546 208" class="nf s-ai" stroke-width="1.8" marker-end="url(#a-ai)"/>
+          <text x="712" y="158" class="t11 f-ai">merge after git diff</text>
+
+          <!-- remote + time machine -->
+          <rect x="650" y="196" width="200" height="44" rx="8" class="f-panel s-ink" stroke-width="1.2"/>
+          <text x="750" y="215" class="t12" text-anchor="middle" font-weight="600">Private git remote</text>
+          <text x="750" y="231" class="t11 mut" text-anchor="middle">GitHub · GitLab · Codeberg</text>
+          <line x1="542" y1="226" x2="646" y2="226" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <text x="594" y="244" class="t11" text-anchor="middle">push</text>
+          <rect x="650" y="306" width="200" height="44" rx="8" class="f-panel s-ink" stroke-width="1.2"/>
+          <text x="750" y="325" class="t12" text-anchor="middle" font-weight="600">Time Machine</text>
+          <text x="750" y="341" class="t11 mut" text-anchor="middle">external drive</text>
+          <line x1="542" y1="328" x2="646" y2="328" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <text x="594" y="320" class="t11" text-anchor="middle">hourly</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 5</b>Your phone only changes the top layer. History and backup live on the Mac, which is also where agents run, so their edits are versioned before sync can spread them.</figcaption>
+      </figure>
+
+      <div class="col">
+        <h3>iPhone: iCloud for the notes, git outside iCloud for history</h3>
+        <p>On iOS only iCloud gets to run in the background, which makes it the practical free choice. Put the vault in <code>iCloud Drive/Obsidian/</code> and, on macOS 15 and later, mark the folder <strong>Keep Downloaded</strong>; evicted placeholders silently break search and backlinks. iCloud keeps no usable history, so add git, but keep <code>.git</code> out of iCloud: it can create conflicted refs like <code>HEAD 2</code> and slows mobile startup. Run <code>git init --separate-git-dir ~/vault-git/Vault.git</code> in the vault and commit from the Mac only. One forum user found the Obsidian Git plugin rejects that layout, so use launchd:</p>
+      </div>
+      <pre><code><span class="c">#!/bin/zsh
+# ~/bin/vault-commit.sh, run by launchd every 10–15 min (Mac only)</span>
+cd "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/Vault" || exit 1
+git add -A
+dels=$(git diff --cached --diff-filter=D --name-only | wc -l | tr -d ' ')
+[ "$dels" -gt 20 ] &amp;&amp; osascript -e "display notification \"$dels deletions staged\" with title \"Vault\""
+git commit -qm "auto $(date +%F-%H%M)" &amp;&amp; git push -q</code></pre>
+      <div class="col">
+        <p>Evicted iCloud files look like deletions to git, so a burst of deletions is your earliest warning of a sync incident. Ignore <code>.obsidian/workspace*.json</code>, <code>.obsidian/cache</code>, <code>.trash/</code>, <code>.DS_Store</code> and any plugin <code>data.json</code> holding API keys. GitHub blocks files over 100 MiB.</p>
+        <h3>Android: Syncthing-Fork with versioning on every device</h3>
+        <p>The official Syncthing Android app was archived in December 2024; the maintained client is <a href="https://github.com/researchxxl/syncthing-android">Syncthing-Fork</a>. Syncthing has no cloud and turns conflicts into <code>.sync-conflict-</code> copies instead of overwriting. The detail most guides skip: <a href="https://docs.syncthing.net/users/versioning.html">versioning only archives changes received from other devices</a>, never local edits. Turn on staggered versioning everywhere and still keep git on the Mac.</p>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Your devices</th><th>Live sync</th><th>History</th><th>Backup</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td>Mac + iPhone</td><td>iCloud Drive, Keep Downloaded</td><td>git, separate git dir, Mac-only commits</td><td>Time Machine</td><td class="num">$0</td></tr>
+            <tr><td>Mac + Android</td><td>Syncthing + Syncthing-Fork, staggered versioning</td><td>git on the Mac</td><td>Time Machine</td><td class="num">$0</td></tr>
+            <tr><td>Mixed phones or Windows</td><td>Self-hosted LiveSync on Cloudflare R2 (encrypted, pinned version), or Syncthing + Möbius/SyncTrain on iOS</td><td>git on the Mac</td><td>Time Machine</td><td class="num">$0–4.99</td></tr>
+            <tr><td>"Just make it work"</td><td>Obsidian Sync</td><td>its history + git</td><td>Time Machine</td><td class="num">~$4–5/mo</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p>Avoid <strong>Remotely Save</strong> for new setups: no release since October 2024, and its auto-sync "fails silently on errors." Obsidian's File Recovery keeps local snapshots for seven days by default and only for <code>.md</code> and <code>.canvas</code>; raise retention to 30 days and treat it as an undo button. Only git plus Time Machine give point-in-time recovery of the whole vault. A private git repo is not end-to-end encrypted; LiveSync is the free option with built-in encryption.</p>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section id="ai">
+      <span class="secnum">05 / AI</span>
+      <h2 class="sec">Put the agent in the folder and let it write only where you review</h2>
+      <div class="col">
+        <p class="lede">The AI pattern that works daily in 2026 is a coding agent run inside the vault folder. Kenneth Reitz runs Claude Code over 467 notes with a 200-line <code>CLAUDE.md</code> under the rule "Claude proposes, you dispose" (<a href="https://kennethreitz.org/essays/2026-03-06-obsidian_vaults_and_claude_code">Reitz</a>). Eleanor Konik, with about 15 million words, has Claude commit after every change and write each correction back into its rulebook (<a href="https://www.eleanorkonik.com/p/claude-obsidian-got-a-level-up">Konik</a>).</p>
+        <p>Two official pieces make this native. Ango's MIT-licensed <a href="https://github.com/kepano/obsidian-skills">obsidian-skills</a> teach agents Obsidian Markdown, Bases, JSON Canvas and the CLI. The <a href="https://obsidian.md/help/cli">official CLI</a> exposes search, daily-note append, properties, <code>orphans</code>, <code>unresolved</code>, <code>backlinks</code> and <code>base:query</code> with JSON output. It needs the Obsidian app running.</p>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Makes the vault more valuable</th><th>Makes it worse</th></tr></thead>
+          <tbody>
+            <tr><td>An agent-kept <code>AI/index.md</code> and topic maps on the read path</td><td>Agents writing evergreen notes "in your voice"</td></tr>
+            <tr><td>Weekly health reports from CLI <code>orphans</code> and <code>unresolved</code></td><td>Bulk auto-tagging and auto-linking without review</td></tr>
+            <tr><td>Questions across months of journals ("what faded since March?")</td><td>Long AI summaries saved as if they were your notes</td></tr>
+            <tr><td>Cited synthesis written to <code>AI/</code></td><td>Unreviewed AI flashcard decks</td></tr>
+            <tr><td>Inbox triage that proposes filing; migrations as reviewable diffs</td><td>Write-enabled agents reading unquarantined clippings</td></tr>
+            <tr><td>A thinking-partner mode that asks for your view first</td><td>"Always allow" on write tools</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p>Practitioners independently arrived at the agent-maintained index file: Konik's overnight index, Hack-Log's <code>INDEX.md</code>, Karpathy's <code>index.md</code>. Hack-Log found <a href="https://note.com/hacklog_stealth/n/n8e1786d1458e?hl=en">54% of agent-facing notes were updated within 30 days against none of 134 human-facing notes</a>. Notes on a path that gets read stay alive. Put AI scaffolding on that path and keep your own notes clearly marked.</p>
+        <h3>Guardrails have to be enforced, not requested</h3>
+        <p>"<a href="https://aident.ai/blog/claude-code-obsidian-without-losing-notes">CLAUDE.md instructions are not a security control</a>." Enforcement lives in deny rules, which run before allow rules. The vault-specific threat is prompt injection through clipped web pages: private notes, untrusted text and an agent that can write or reach the network are all three parts of Simon Willison's <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">lethal trifecta</a>.</p>
+      </div>
+
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 392" role="img" aria-label="Prompt-injection risk sits where private notes, untrusted clippings and a write-capable agent overlap. Five guardrails each shrink one of the three circles.">
+          <circle cx="285" cy="150" r="108" class="f-private s-private" fill-opacity="0.14" stroke-width="1.6"/>
+          <circle cx="425" cy="150" r="108" class="f-source s-source" fill-opacity="0.14" stroke-width="1.6"/>
+          <circle cx="355" cy="268" r="108" class="f-ai s-ai" fill-opacity="0.14" stroke-width="1.6"/>
+          <text x="236" y="122" class="t13 f-private" text-anchor="middle">Private</text>
+          <text x="236" y="139" class="t13 f-private" text-anchor="middle">notes</text>
+          <text x="474" y="122" class="t13 f-source" text-anchor="middle">Untrusted</text>
+          <text x="474" y="139" class="t13 f-source" text-anchor="middle">clippings</text>
+          <text x="355" y="322" class="t13 f-ai" text-anchor="middle">Agent that</text>
+          <text x="355" y="339" class="t13 f-ai" text-anchor="middle">writes or sends</text>
+          <circle cx="355" cy="190" r="4" class="f-ink"/>
+          <text x="355" y="214" class="t12" text-anchor="middle" font-weight="700">injection</text>
+          <text x="355" y="229" class="t12" text-anchor="middle" font-weight="700">path</text>
+
+          <rect x="560" y="34" width="3" height="40" class="f-private"/>
+          <text x="574" y="48" class="t13">Private/ denied to cloud agents</text>
+          <text x="574" y="66" class="t11 mut">local models only for sensitive notes</text>
+          <rect x="560" y="102" width="3" height="40" class="f-source"/>
+          <text x="574" y="116" class="t13">Clippings/ read-only; search returns paths</text>
+          <text x="574" y="134" class="t11 mut">opening one becomes an explicit, visible call</text>
+          <rect x="560" y="170" width="3" height="40" class="f-ai"/>
+          <text x="574" y="184" class="t13">Deny rules: write only to AI/</text>
+          <text x="574" y="202" class="t11 mut">no rm or mv; AGENTS.md not editable</text>
+          <rect x="560" y="238" width="3" height="40" class="f-source"/>
+          <text x="574" y="252" class="t13">Strip zero-width and bidi Unicode</text>
+          <text x="574" y="270" class="t11 mut">DataviewJS and Templater stay off</text>
+          <rect x="560" y="306" width="3" height="40" class="f-ai"/>
+          <text x="574" y="320" class="t13">Approve each write</text>
+          <text x="574" y="338" class="t11 mut">never choose “Always allow”</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 6</b>Each guardrail, keyed by color, shrinks one circle. None catches a plainly visible malicious instruction, so per-write approval stays the last line of defense (<a href="https://zander.wtf/blog/obsidian-mcp-pi/">Zander</a>).</figcaption>
+      </figure>
+
+      <pre><code><span class="c">// .claude/settings.json (test each rule on a throwaway file first)</span>
+{ "permissions": { "deny": [
+  "Edit(./Notes/**)", "Write(./Notes/**)", "Edit(./Clippings/**)",
+  "Read(./Private/**)", "Edit(./AGENTS.md)", "Bash(rm *)", "Bash(mv *)" ] } }</code></pre>
+      <div class="col">
+        <p><code>AGENTS.md</code> should say what each folder means, the origin rule (write only to <code>AI/</code>; changes to your notes go to <code>AI/Proposals/</code>), the citation rule (every claim links a note, block or quote), "never rename or move files," and "commit as author <code>agent</code> after each task." Start sessions in plan mode, check <code>git diff --name-status</code> afterwards, and run bulk work on a branch outside the synced folder.</p>
+        <h3>MCP, phone access and local models</h3>
+        <p>There is still no first-party Obsidian MCP server. The Local REST API plugin has served MCP since v4.0 (May 2026). If your agent has a shell, files plus the CLI do more than MCP. MCP earns its place for asking your vault questions from your phone: Zander runs a small server on an always-on machine and adds it once as a Claude connector. Local models through Ollama or LM Studio handle per-note jobs and anything sensitive; every published whole-vault agent workflow found still uses a frontier cloud model. If Web Clipper's Interpreter uses Ollama, raise the 2,048-token default context, or long pages get truncated silently.</p>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section id="retrieval">
+      <span class="secnum">06 / Retrieval</span>
+      <h2 class="sec">Skip the vector database until plain search starts missing your rewordings</h2>
+      <div class="col">
+        <p class="lede">Anthropic's guidance: under about 200,000 tokens, <a href="https://www.anthropic.com/news/contextual-retrieval">put everything in the prompt and skip retrieval</a>. Karpathy's LLM wiki reached about 400,000 words on index files alone. Chroma found all 18 frontier models it tested degrade as input grows, so a giant context window is not free either. Personal notes are where grep fails first: a search for "burnout" misses the entry that says "exhausted, need a break."</p>
+      </div>
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 206" role="img" aria-label="Vault size on a log scale from 10 thousand to 20 million words. Under about 150 thousand words, use the whole vault in context or agent search. From 150 to 500 thousand, add an agent-kept index. Above 500 thousand, add qmd hybrid search.">
+          <rect x="60" y="62" width="277.9" height="88" class="f-human-t"/>
+          <rect x="337.9" y="62" width="123.6" height="88" class="f-soft"/>
+          <rect x="461.5" y="62" width="378.5" height="88" class="f-ai-t"/>
+          <text x="199" y="102" class="t13" text-anchor="middle">Everything in context,</text>
+          <text x="199" y="119" class="t13" text-anchor="middle">or agent + grep</text>
+          <text x="399.7" y="102" class="t13" text-anchor="middle">grep +</text>
+          <text x="399.7" y="119" class="t13 mono" text-anchor="middle">index.md</text>
+          <text x="651" y="102" class="t13" text-anchor="middle">add qmd: keyword + vector</text>
+          <text x="651" y="119" class="t13" text-anchor="middle">+ rerank, local, over MCP</text>
+
+          <line x1="337.9" y1="44" x2="337.9" y2="150" class="s-ink" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="333" y="40" class="t11" text-anchor="end">Anthropic: no retrieval under 200k tokens</text>
+          <line x1="438.6" y1="26" x2="438.6" y2="150" class="s-ink" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="443" y="22" class="t11">Karpathy's LLM wiki · 400k words, index only</text>
+          <line x1="810.5" y1="44" x2="810.5" y2="150" class="s-ink" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="806" y="40" class="t11" text-anchor="end">Konik's vault · ~15M words</text>
+
+          <line x1="60" y1="166" x2="840" y2="166" class="s-ink" stroke-width="1.2"/>
+          <line x1="60" y1="166" x2="60" y2="172" class="s-ink"/>
+          <line x1="296.3" y1="166" x2="296.3" y2="172" class="s-ink"/>
+          <line x1="532.6" y1="166" x2="532.6" y2="172" class="s-ink"/>
+          <line x1="768.9" y1="166" x2="768.9" y2="172" class="s-ink"/>
+          <text x="60" y="190" class="t11 mono mut" text-anchor="middle">10k</text>
+          <text x="296.3" y="190" class="t11 mono mut" text-anchor="middle">100k</text>
+          <text x="532.6" y="190" class="t11 mono mut" text-anchor="middle">1M</text>
+          <text x="768.9" y="190" class="t11 mono mut" text-anchor="middle">10M words</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 7</b>Vault size in words, log scale. The 150k and 500k boundaries are estimates from these sources; no benchmark has compared these approaches on personal notes.</figcaption>
+      </figure>
+      <div class="col">
+        <p>When you do add search, add <a href="https://github.com/tobi/qmd">qmd</a> (MIT, about 30,800 stars). The whole index is one SQLite file in <code>~/.cache/qmd</code>, outside the vault and away from sync. Everything runs locally, and it serves MCP tools that Claude Code calls alongside its own grep. It has no documented file watcher, so run <code>qmd update &amp;&amp; qmd embed</code> from launchd or at the start of each agent session; it skips unchanged files.</p>
+      </div>
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 330" role="img" aria-label="qmd's search line: a question is expanded into three variants, searched by keyword and by vector in parallel, fused, reranked, then widened one wikilink hop. Below, Anthropic's measurements: context on chunks cut retrieval failures 35 percent, contextual keyword search 49 percent, and a reranker 67 percent.">
+          <path d="M60 100 H 200 C 240 100, 240 60, 280 60 H 460 C 500 60, 500 100, 540 100 H 850" class="nf s-ink" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M200 100 C 240 100, 240 140, 280 140 H 460 C 500 140, 500 100, 540 100" class="nf s-ink" stroke-width="7" stroke-linecap="round"/>
+          <path d="M200 100 C 240 100, 240 140, 280 140 H 460 C 500 140, 500 100, 540 100" class="nf s-panel" stroke-width="2.5" stroke-linecap="round"/>
+
+          <circle cx="60" cy="100" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="160" cy="100" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="370" cy="60" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="370" cy="140" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="560" cy="100" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="660" cy="100" r="8" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="760" cy="100" r="8" class="f-human s-panel" stroke-width="3"/>
+          <circle cx="850" cy="100" r="11" class="f-panel s-ink" stroke-width="3"/>
+          <circle cx="850" cy="100" r="4" class="f-ink"/>
+
+          <text x="60" y="82" class="t13" text-anchor="middle">Question</text>
+          <text x="60" y="126" class="t11 mono mut" text-anchor="middle">“burnout”</text>
+          <text x="160" y="82" class="t13" text-anchor="middle">Expand ×3</text>
+          <text x="160" y="126" class="t11 mut" text-anchor="middle">3 variants</text>
+          <text x="370" y="42" class="t13" text-anchor="middle">Keyword · BM25</text>
+          <text x="370" y="166" class="t13" text-anchor="middle">Vector · embeddinggemma</text>
+          <text x="560" y="82" class="t13" text-anchor="middle">Fuse</text>
+          <text x="560" y="126" class="t11 mono mut" text-anchor="middle">RRF k=60</text>
+          <text x="660" y="82" class="t13" text-anchor="middle">Rerank</text>
+          <text x="660" y="126" class="t11 mono mut" text-anchor="middle">qwen3 0.6B</text>
+          <text x="760" y="82" class="t13 f-human" text-anchor="middle">Link hop</text>
+          <text x="760" y="126" class="t11 mut" text-anchor="middle">+1 wikilink</text>
+          <text x="862" y="82" class="t13" text-anchor="end">Results</text>
+          <text x="862" y="146" class="t11 mono mut" text-anchor="end">“exhausted, need a break”</text>
+
+          <text x="60" y="206" class="t10 mut">ANTHROPIC CONTEXTUAL RETRIEVAL · RETRIEVAL FAILURES LEFT</text>
+          <text x="250" y="232" class="t12" text-anchor="end">Embeddings only</text>
+          <rect x="262" y="220" width="560" height="16" rx="2" class="f-rule"/>
+          <text x="250" y="260" class="t12" text-anchor="end">+ context on each chunk</text>
+          <rect x="262" y="248" width="364" height="16" rx="2" class="f-ink"/>
+          <text x="634" y="260" class="t12 mono">−35%</text>
+          <text x="250" y="288" class="t12" text-anchor="end">+ contextual BM25</text>
+          <rect x="262" y="276" width="285.6" height="16" rx="2" class="f-ink"/>
+          <text x="556" y="288" class="t12 mono">−49%</text>
+          <text x="250" y="316" class="t12" text-anchor="end">+ reranker</text>
+          <rect x="262" y="304" width="184.8" height="16" rx="2" class="f-human"/>
+          <text x="455" y="316" class="t12 mono">−67%</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 8</b>qmd's search path. The hollow line is the vector lane. The teal stop is the one addition worth making for a vault: widen hits one hop along your own links. Hybrid search and reranking matter more than which embedding model you pick.</figcaption>
+      </figure>
+      <div class="col">
+        <p>Choose embeddings by privacy, not cost. Hosted models cost about $0.02 per million tokens, so a 50,000-note vault costs about a dollar to embed. Local ones are close in quality (EmbeddingGemma 69.7, Qwen3-Embedding-0.6B 70.5 on English MTEB). Record the model in the index so a change triggers a full rebuild. At personal scale every embedded store is fast enough; pick sqlite-vec or LanceDB for zero maintenance.</p>
+        <p><strong>Skip GraphRAG.</strong> An independent re-test cut LightRAG's reported win rate over plain retrieval <a href="https://arxiv.org/pdf/2506.06331">from 66.7% to 39.1%</a>, and a 2026 benchmark found no graph method winning everywhere. Building one costs hours of model calls and produces a second graph that competes with your own links. Your wikilinks already are a curated knowledge graph.</p>
+      </div>
+    </section>
+
+    <!-- 7 -->
+    <section id="beyond">
+      <span class="secnum">07 / Beyond Obsidian</span>
+      <h2 class="sec">Treat the vault as a substrate and upgrade what each primitive exposes</h2>
+      <div class="col">
+        <p class="lede">From first principles a vault is five primitives. <strong>Files</strong> give agents, git and publishing. <strong>Links</strong> give a hand-curated graph. <strong>YAML</strong> gives a typed property layer for Bases and scheduled jobs. <strong>Paths</strong> give permission scopes and provenance. <strong>The running app</strong> (CLI and URI) exposes what exists only at runtime: the resolved link graph and Bases results. File-only jobs can run headless; CLI jobs need a logged-in Mac.</p>
+      </div>
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 352" role="img" aria-label="Eight upgrades mapped to the primitives they use, with maturity and a verdict. Coding agents, Bases with the CLI, a scoped LLM wiki and ingestion are ready now; multiplayer and personal fine-tunes are not.">
+          <text x="20" y="30" class="t10 mut">UPGRADE</text>
+          <text x="330" y="30" class="t10 mut" text-anchor="middle">FILES</text>
+          <text x="385" y="30" class="t10 mut" text-anchor="middle">LINKS</text>
+          <text x="440" y="30" class="t10 mut" text-anchor="middle">YAML</text>
+          <text x="495" y="30" class="t10 mut" text-anchor="middle">PATHS</text>
+          <text x="550" y="30" class="t10 mut" text-anchor="middle">CLI</text>
+          <text x="600" y="30" class="t10 mut">MATURITY</text>
+          <text x="716" y="30" class="t10 mut">VERDICT</text>
+          <line x1="20" y1="42" x2="860" y2="42" class="s-ink" stroke-width="1.2"/>
+          <text x="20" y="70" font-size="13" font-weight="500">Coding agent + AGENTS.md + skills</text>
+          <circle cx="330" cy="66" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="66" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="66" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="66" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="66" r="6.5" class="f-ink"/>
+          <rect x="600" y="62" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="62" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="62" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="62" width="20" height="8" rx="2" class="f-ink"/>
+          <text x="716" y="70" class="t12 f-human" font-weight="700">Do first</text>
+          <line x1="20" y1="84" x2="860" y2="84" class="s-rule" stroke-width="1"/>
+          <text x="20" y="106" font-size="13" font-weight="500">Bases + CLI, results frozen to Markdown</text>
+          <circle cx="330" cy="102" r="2.5" class="f-rule"/>
+          <circle cx="385" cy="102" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="102" r="6.5" class="f-ink"/>
+          <circle cx="495" cy="102" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="102" r="6.5" class="f-ink"/>
+          <rect x="600" y="98" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="98" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="98" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="98" width="20" height="8" rx="2" class="f-ink"/>
+          <text x="716" y="106" class="t12 f-human" font-weight="700">Do</text>
+          <line x1="20" y1="120" x2="860" y2="120" class="s-rule" stroke-width="1"/>
+          <text x="20" y="142" font-size="13" font-weight="500">Scoped LLM wiki for one domain</text>
+          <circle cx="330" cy="138" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="138" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="138" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="138" r="6.5" class="f-ink"/>
+          <circle cx="550" cy="138" r="2.5" class="f-rule"/>
+          <rect x="600" y="134" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="134" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="134" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="134" width="20" height="8" rx="2" class="f-ink"/>
+          <text x="716" y="142" class="t12 f-human" font-weight="700">Do, scoped</text>
+          <line x1="20" y1="156" x2="860" y2="156" class="s-rule" stroke-width="1"/>
+          <text x="20" y="178" font-size="13" font-weight="500">Ingestion into Clippings/</text>
+          <circle cx="330" cy="174" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="174" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="174" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="174" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="174" r="2.5" class="f-rule"/>
+          <rect x="600" y="170" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="170" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="170" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="170" width="20" height="8" rx="2" class="f-rule"/>
+          <text x="716" y="178" class="t12 f-human" font-weight="700">Do, open formats first</text>
+          <line x1="20" y1="192" x2="860" y2="192" class="s-rule" stroke-width="1"/>
+          <text x="20" y="214" font-size="13" font-weight="500">Scheduled lint and digests on a branch</text>
+          <circle cx="330" cy="210" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="210" r="6.5" class="f-ink"/>
+          <circle cx="440" cy="210" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="210" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="210" r="2.5" class="f-rule"/>
+          <rect x="600" y="206" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="206" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="206" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="206" width="20" height="8" rx="2" class="f-rule"/>
+          <text x="716" y="214" class="t12 mut" font-weight="600">Month two</text>
+          <line x1="20" y1="228" x2="860" y2="228" class="s-rule" stroke-width="1"/>
+          <text x="20" y="250" font-size="13" font-weight="500">Publishing loop (Quartz, Publish)</text>
+          <circle cx="330" cy="246" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="246" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="246" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="246" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="246" r="2.5" class="f-rule"/>
+          <rect x="600" y="242" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="242" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="242" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="672" y="242" width="20" height="8" rx="2" class="f-ink"/>
+          <text x="716" y="250" class="t12 mut" font-weight="600">When you have output</text>
+          <line x1="20" y1="264" x2="860" y2="264" class="s-rule" stroke-width="1"/>
+          <text x="20" y="286" font-size="13" font-weight="500">Human + agent multiplayer (Relay)</text>
+          <circle cx="330" cy="282" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="282" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="282" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="282" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="282" r="2.5" class="f-rule"/>
+          <rect x="600" y="278" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="278" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="648" y="278" width="20" height="8" rx="2" class="f-rule"/>
+          <rect x="672" y="278" width="20" height="8" rx="2" class="f-rule"/>
+          <text x="716" y="286" class="t12 mut" font-weight="600">Wait</text>
+          <line x1="20" y1="300" x2="860" y2="300" class="s-rule" stroke-width="1"/>
+          <text x="20" y="322" font-size="13" font-weight="500">Personal LoRA or digital twin</text>
+          <circle cx="330" cy="318" r="6.5" class="f-ink"/>
+          <circle cx="385" cy="318" r="2.5" class="f-rule"/>
+          <circle cx="440" cy="318" r="2.5" class="f-rule"/>
+          <circle cx="495" cy="318" r="2.5" class="f-rule"/>
+          <circle cx="550" cy="318" r="2.5" class="f-rule"/>
+          <rect x="600" y="314" width="20" height="8" rx="2" class="f-ink"/>
+          <rect x="624" y="314" width="20" height="8" rx="2" class="f-rule"/>
+          <rect x="648" y="314" width="20" height="8" rx="2" class="f-rule"/>
+          <rect x="672" y="314" width="20" height="8" rx="2" class="f-rule"/>
+          <text x="716" y="322" class="t12 f-private" font-weight="700">Don't yet</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 9</b>Filled dots mark the primitives each upgrade builds on. Four bars means a daily driver in November 2026, one means speculative. Start at the top.</figcaption>
+      </figure>
+      <div class="col">
+        <h3>The LLM wiki is right for reference knowledge and wrong for your own thinking</h3>
+        <p>Karpathy's <a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f">April 2026 gist</a> keeps raw sources immutable, has an LLM write and lint a wiki, and navigates by index files. Practitioners report a sweet spot of 100 to 200 sources, and critics note it skips the learning you get from writing. His own directory split already separates provenance. A personal corpus needs one more layer he doesn't have: a protected human layer the model can read, cite and propose changes to, but never rewrite. Use the pattern under <code>AI/Wiki/&lt;domain&gt;/</code> for a field you need to query, fed from <code>Clippings/</code>.</p>
+        <h3>What else is ready, and what isn't</h3>
+        <p>Ingestion fails in order of how closed it is: open formats like Web Clipper are most robust, official APIs like Readwise next, hardware weakest (Meta bought Limitless in December 2025 and ended Pendant sales). Screenpipe defines scheduled agents as Markdown files, so the automation is itself a note. The DuckDB plugin freezes query results into Markdown tables so agents read answers as text; anything an agent computes should land as diffable Markdown. Real-time multiplayer through CRDT plugins like Relay is early and does not coordinate with Obsidian Sync. Fine-tuning a model on your vault captures style, not facts, and one person's model reproduced friends' addresses and card digits.</p>
+        <h3>Three frontier ideas you can build now</h3>
+        <p><strong>Trails.</strong> Vannevar Bush's 1945 memex had named, annotated paths through material. Tools have links but not trails; an agent can propose one, and you name and endorse it. <strong>Belief diffs.</strong> Git history plus <code>supersedes</code> links plus dated notes already hold "in March you believed X, in October you wrote Y, and source Z changed it." A quarterly agent can write that report. <strong>Malleable tools.</strong> Ink &amp; Switch argue AI code generation needs an environment that lets users reshape software. With the CLI's developer commands, an agent can write and test a small plugin for your one-off need.</p>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section id="corpus">
+      <span class="secnum">08 / First principles</span>
+      <h2 class="sec">An intelligent corpus earns trust through provenance, time and your own authorship</h2>
+      <div class="col">
+        <p class="lede">Start from the jobs. Re-finding is the best-measured: up to 40% of web queries in a year-long log were re-finding (<a href="https://people.csail.mit.edu/teevan/work/publications/papers/sigir07.pdf">Teevan 2007</a>). Learning has the strongest science: retrieval practice beats rereading. Self-knowledge is the job only a personal corpus can do, because hindsight bias makes people misremember what they used to believe.</p>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Job</th><th>AI's proper role</th><th>How you'd know it works</th></tr></thead>
+          <tbody>
+            <tr><td>Recall</td><td>Hybrid search with citations, and "I have no note on that"</td><td>Time to re-find; correct abstentions</td></tr>
+            <tr><td>Output and decisions</td><td>Gather sources and outline after you state your thesis</td><td>Can you defend the draft without the tool?</td></tr>
+            <tr><td>Synthesis over time</td><td>Surface tensions between your notes; propose trails</td><td>Share of suggested links you keep and reuse</td></tr>
+            <tr><td>Resurfacing</td><td>Bring back notes that need a decision</td><td>Acceptance rate within a fatigue budget</td></tr>
+            <tr><td>Reasoning partner</td><td>Ask for your position first, then argue</td><td>Revisions and counterarguments you produce</td></tr>
+            <tr><td>Self-knowledge</td><td>Belief diffs from git and supersession links</td><td>"What did I think in March, and why did it change?"</td></tr>
+            <tr><td>Learning</td><td>Quiz you from your notes; withhold answers</td><td>Delayed recall</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <p>These jobs conflict, so one undifferentiated assistant is the wrong design. The 2025–26 evidence points one way, though it is preliminary. In MIT's small EEG study, LLM-assisted writers <a href="https://arxiv.org/abs/2506.08872">struggled to quote their own essays</a>. Anthropic's January 2026 trial found 17% lower mastery with AI help, but <a href="https://www.anthropic.com/research/AI-assistance-coding-skills">engaged users scored 65–86% while passive delegators scored 24–39%</a>. The harm comes from passive delegation, not from AI being present. Make the engaged pattern the default.</p>
+        <h3>Provenance is the master property</h3>
+        <p>Clark and Chalmers' <a href="https://doi.org/10.1093/analys/58.1.7">extended-mind</a> criteria say a notebook is part of your thinking when you trust what it returns without checking. If unmarked AI text sits among your notes, model output joins your mind without ever being endorsed. The better model is Wegner's transactive memory: know roughly what your corpus holds and trust it because its origins are visible. That gives three required properties: <strong>provenance</strong> on every note, <strong>time</strong> (supersede beliefs with dated notes, never overwrite), and <strong>verifiability</strong> (every AI claim resolves to a block or a quote a script can check).</p>
+      </div>
+      <figure class="dg">
+        <div class="scroll">
+        <svg viewBox="0 0 880 316" role="img" aria-label="How a note's origin changes. Sources are compiled into AI text, which becomes ai-accepted only after you rewrite and accept it. Your own notes are superseded by newer dated notes, never overwritten. Sources, your notes and accepted text may be cited as evidence; raw AI text never is.">
+          <!-- stamps -->
+          <rect x="30" y="49" width="140" height="46" rx="6" class="f-source-t s-source" stroke-width="1.6"/>
+          <rect x="34" y="53" width="132" height="38" rx="4" class="nf s-source" stroke-width="0.8"/>
+          <text x="100" y="69" class="t12 mono f-source" text-anchor="middle" font-weight="600">origin: source</text>
+          <text x="100" y="84" class="t11 mut" text-anchor="middle">Clippings/, immutable</text>
+
+          <rect x="260" y="49" width="140" height="46" rx="6" class="f-ai-t s-ai" stroke-width="1.6"/>
+          <rect x="264" y="53" width="132" height="38" rx="4" class="nf s-ai" stroke-width="0.8"/>
+          <text x="330" y="69" class="t12 mono f-ai" text-anchor="middle" font-weight="600">origin: ai</text>
+          <text x="330" y="84" class="t11 mut" text-anchor="middle">AI/, regenerable</text>
+
+          <rect x="490" y="49" width="140" height="46" rx="6" class="f-human-t s-human" stroke-width="1.6"/>
+          <rect x="494" y="53" width="132" height="38" rx="4" class="nf s-ai" stroke-width="0.8" stroke-dasharray="3 2"/>
+          <text x="560" y="69" class="t12 mono f-human" text-anchor="middle" font-weight="600">ai-accepted</text>
+          <text x="560" y="84" class="t11 mut" text-anchor="middle">endorsed by you</text>
+
+          <rect x="710" y="49" width="140" height="46" rx="6" class="f-human-t s-human" stroke-width="1.6"/>
+          <rect x="714" y="53" width="132" height="38" rx="4" class="nf s-human" stroke-width="0.8"/>
+          <text x="780" y="69" class="t12 mono f-human" text-anchor="middle" font-weight="600">origin: human</text>
+          <text x="780" y="84" class="t11 mut" text-anchor="middle">Notes/, your claims</text>
+
+          <rect x="710" y="147" width="140" height="46" rx="6" class="f-soft s-muted" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="780" y="167" class="t12 mono mut" text-anchor="middle" font-weight="600" text-decoration="line-through">superseded</text>
+          <text x="780" y="182" class="t11 mut" text-anchor="middle">kept, dated (as_of)</text>
+
+          <!-- transitions -->
+          <line x1="172" y1="72" x2="255" y2="72" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <text x="214" y="64" class="t11" text-anchor="middle">compiled</text>
+          <line x1="402" y1="72" x2="485" y2="72" class="s-human" stroke-width="2" marker-end="url(#a-human)"/>
+          <text x="444" y="64" class="t11 f-human" text-anchor="middle" font-weight="600">you rewrite</text>
+          <text x="444" y="90" class="t11 f-human" text-anchor="middle" font-weight="600">and accept</text>
+          <line x1="780" y1="97" x2="780" y2="142" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <text x="790" y="118" class="t11">replaced by</text>
+          <text x="790" y="132" class="t11">a newer note</text>
+
+          <!-- evidence pool -->
+          <rect x="30" y="250" width="820" height="52" rx="10" class="f-human-t" fill-opacity="0.5"/>
+          <rect x="30" y="250" width="820" height="52" rx="10" class="nf s-human" stroke-width="1.2" stroke-dasharray="5 4"/>
+          <text x="440" y="273" class="t13" text-anchor="middle">Evidence an answer may cite</text>
+          <text x="440" y="290" class="t11 mut" text-anchor="middle">sources, your notes, text you accepted</text>
+          <line x1="100" y1="97" x2="100" y2="246" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <line x1="560" y1="97" x2="560" y2="246" class="s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <path d="M712 90 C 680 120, 680 200, 680 246" class="nf s-ink" stroke-width="1.6" marker-end="url(#a-ink)"/>
+          <line x1="780" y1="195" x2="780" y2="246" class="s-muted" stroke-width="1.4" stroke-dasharray="2 3"/>
+          <line x1="330" y1="97" x2="330" y2="244" class="s-private" stroke-width="1.6" stroke-dasharray="5 4"/>
+          <path d="M322 164 L 338 180 M 338 164 L 322 180" class="s-private" stroke-width="2.6" stroke-linecap="round"/>
+          <text x="346" y="176" class="t11 f-private" font-weight="600">never cited as evidence</text>
+        </svg>
+        </div>
+        <figcaption><b>FIG 10</b>The blocked line prevents provenance collapse: AI summaries re-ingested as evidence until the corpus cites itself, a personal version of the <a href="https://doi.org/10.1038/s41586-024-07566-y">model collapse</a> seen when models train on their own output.</figcaption>
+      </figure>
+      <div class="col">
+        <p>The remaining defenses are structural. The AI layer can be deleted and rebuilt at any time. AI links are suggestions until accepted. Agents never rename or move the files you navigate by, because changed locations break re-finding. Open problems remain: no accepted metric for augmentation versus substitution, review fatigue when an agent proposes hundreds of links a week, no injection-safe ingestion in any consumer tool, and no good policy for when an old note should interrupt you. Licklider's 1960 division of labor still fits: the machine does the clerical work of getting you into position to think, and you write the claims.</p>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section id="build">
+      <span class="secnum">09 / Build order</span>
+      <h2 class="sec">Five stages, each with a test that tells you it is done</h2>
+      <ol class="stages">
+        <li><span class="when">Day 1</span><h4>Safety net</h4><p>Sync for your phone, the separate-git-dir repo, the launchd commit script with deletion alarm, a private remote, Time Machine, File Recovery at 30 days.</p><span class="done">Done when you have restored one note from git and one from Time Machine.</span></li>
+        <li><span class="when">Week 1</span><h4>Rulebook</h4><p>The folders above, <code>origin</code> in templates, <code>AGENTS.md</code>, obsidian-skills in <code>.claude/</code>, deny rules, Smart Connections for related notes while writing.</p><span class="done">Done when an agent session in plan mode creates files only in <code>AI/</code>.</span></li>
+        <li><span class="when">Weeks 2–4</span><h4>Read-path agents</h4><p><code>AI/index.md</code> upkeep, a weekly health report from the CLI, a Socratic weekly review over <code>Daily/</code>, inbox triage into <code>Proposals/</code>.</p><span class="done">Done when you open the digest weekly and accept or reject proposals.</span></li>
+        <li><span class="when">When grep misses, ~500k words</span><h4>Retrieval</h4><p>qmd over <code>Notes/</code>, <code>References/</code>, <code>Clippings/</code> and <code>AI/</code>, exposed over MCP and refreshed at session start or by launchd.</p><span class="done">Done when reworded queries find the right note in the top five.</span></li>
+        <li><span class="when">Quarters 1–2</span><h4>Compounding loops</h4><p>Nightly lint on an <code>agent/</code> branch, one scoped LLM wiki, a quarterly belief diff, a low-bar publishing stream, an optional phone connector from an always-on Mac.</p><span class="done">Done when your own writing is cited in finished output every month.</span></li>
+      </ol>
+      <div class="col">
+        <p>Stages 1–4 cost nothing; Möbius at $4.99 is optional for mixed-phone setups. The one recurring cost is the model you rent.</p>
+        <p class="callout">Tools are now cheap and reversible because everything durable is Markdown and YAML. What compounds, for good or ill, is governance: who writes where, how origin is recorded, and whether beliefs are superseded or overwritten.</p>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section id="confidence">
+      <span class="secnum">10 / Confidence</span>
+      <h2 class="sec">How sure each part is</h2>
+      <ul class="confidence">
+        <li><span class="hi">Solid</span><div>Obsidian feature dates and behavior (changelog and help docs), sync engine behavior, qmd's design, the cognitive-science findings on generation, spacing and retrieval practice.</div></li>
+        <li><span class="md">Practitioner</span><div>What compounds and what fails comes from self-reports by people who stuck with it. No controlled or long-term study of Zettelkasten, PARA, LYT or AI-maintained vaults exists.</div></li>
+        <li><span class="md">Preliminary</span><div>Studies on AI harming learning are small and short (MIT n=54 preprint; Anthropic's trial on one library).</div></li>
+        <li><span class="lo">Estimate</span><div>The 150k and 500k word thresholds, and the free phone connector on a home Mac, are synthesis rather than tested results.</div></li>
+        <li><span class="lo">Unverified</span><div>Maintenance status of Templater, QuickAdd, Periodic Notes and similar plugins; Karpathy details come from secondary write-ups; the Obsidian Git plugin may reject a separate git dir (one forum report); MCP server comparisons come from one vendor.</div></li>
+      </ul>
+      <footer>Compiled November 3, 2026 from research on methods, vault structure, tooling, habits, free sync, AI workflows, retrieval infrastructure, frontier extensions and first-principles corpus design. Figures are drawn from the sources linked in the text.</footer>
+    </section>
+  </main>
+</div>
+
+</body>
+</html>
