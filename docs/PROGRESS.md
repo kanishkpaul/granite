@@ -54,13 +54,25 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Scoped LLM wiki under `AI/Wiki/<domain>/` | ✓ | `KBAI.WikiBuilder`, spec `wiki.md` |
 
 ## Waiting on you
-- Sign in the `claude` CLI and run the MCP smoke test (decision 0004).
-- Editor checks by hand: CJK IME, drag and drop, VoiceOver (decision 0003).
-- Hotkey and Shortcuts capture by hand (`capture.md`).
-- 20+ re-find queries in `.granite/eval/retrieval.jsonl`.
-- Install granite in /Applications, then try Spotlight and "Ask granite" in Siri.
+**Setup (once)**
+- Install granite in /Applications (build `granite` in Xcode), open your vault, and let it index.
+- Optional: a Claude API key (Settings → AI) for the cloud routes; a Developer ID team for PCC (decision 0004).
+- Optional: turn on the local MLX model in Settings → AI and download it (2.3–4.6 GB) if private notes need more than the on-device model.
+- Optional: add your code repositories in Settings → Code; `pipx install docling` for "Study with Docling".
+- Sign in the `claude` CLI and register the MCP server: `claude mcp add granite -- /Applications/granite.app/Contents/MacOS/granite-mcp --vault ~/Vault` (decision 0004).
 - A clip bookmarklet: `javascript:location.href='granite://clip?url='+encodeURIComponent(location.href)`.
-- Optional: `pipx install docling`, then "Study with Docling" on a paper.
-- Import a few real papers (⌘K "Import PDF…" or drop them on the window) and check the extracted text.
-- Decide on link proposals for a few weeks: the acceptance rate tunes (and can pause) see-also.
-- Optional: a Claude API key (Settings) for the cloud routes; a Developer ID team for PCC (decision 0004).
+
+**Checks only you can do**
+- Editor by hand: CJK IME, drag and drop, VoiceOver (decision 0003).
+- Hotkey and Shortcuts capture (`capture.md`); Spotlight and "Ask granite" in Siri (`app-intents.md`).
+- Import a few real papers and check the extracted text.
+
+**Gates (they measure your use; plan §8)**
+- Phase 1: seven consecutive days in granite.
+- Phase 2: 20+ re-find queries in `.granite/eval/retrieval.jsonl` (Recall@5 beats BM25 by ≥ 10 points); a Q&A a day for two weeks; link-proposal acceptance ≥ 25%.
+- Phase 3: four weekly reviews in a row; ≥ 30 held claims and ≥ 3 superseded; daily prompt reviews with ≥ 85% recall; the digest opened ≥ 4 days a week.
+- Phase 4: the first belief diff answers "what did I think in March and why did it change?"; a commit-linked decision re-found in under a minute; two named trails.
+
+## Branches
+Each feature is its own branch, stacked in this order (each builds on the one before), all pushed to `origin`:
+`phase0/core-and-index` → `phase1/capture` → `phase1/git-autocommit` → `phase1/app-shell` → `phase1/editor-polish` → `phase1/inbox-queue` → `phase2/model-router` → `phase2/hybrid-everywhere` → `phase2/grounded-qa` → `phase2/proposals` → `phase2/related` → `phase2/papers` → `phase2/mlx-llm` → `phase3/claims` → `phase3/prompts` → `phase3/digest-weekly` → `phase3/metrics` → `phase3/enrichment` → `phase3/mcp-writes` → `phase4/code-decisions` → `phase4/trails-litgraph` → `phase4/beliefs` → `phase4/clipper-intents` → `phase4/wiki` → `final/docs`. The last branch holds everything; merging it into `main` lands the whole build.

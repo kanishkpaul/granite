@@ -27,6 +27,11 @@ enum SnapshotMode {
         let select = arguments.firstIndex(of: "--select").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         Task {
             let store = AppModel.shared.store
+            if arguments.contains("--clear-spotlight") {
+                // Removes every note granite put in Spotlight (e.g. after testing with scratch vaults).
+                await store.clearSpotlight()
+                NSLog("granite snapshot: Spotlight cleared")
+            }
             if select == "proposals" { store.selection = .proposals }
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
