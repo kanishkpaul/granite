@@ -31,6 +31,15 @@ public struct Budget: Sendable, Hashable {
     public var monthlyUSD: Double
     public var alertUSD: Double
     public var hardStopUSD: Double
+
+    public init(monthlyUSD: Double, alertUSD: Double, hardStopUSD: Double) {
+        self.monthlyUSD = monthlyUSD
+        self.alertUSD = alertUSD
+        self.hardStopUSD = hardStopUSD
+    }
+
+    /// Master plan §6.7: $20 a month, alert at $15, hard stop at $25 for background jobs.
+    public static let standard = Budget(monthlyUSD: 20, alertUSD: 15, hardStopUSD: 25)
 }
 
 public struct PolicyError: Error, CustomStringConvertible, Sendable {

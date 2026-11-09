@@ -31,7 +31,7 @@ enum SnapshotMode {
                 try? rep.representation(using: .png, properties: [:])?
                     .write(to: output.deletingPathExtension().appendingPathExtension("editor.png"))
             }
-            let folders = store.folders.map { "\($0.path) (\($0.noteCount))" }.joined(separator: ", ")
+            let folders: String = store.folders.map { folder -> String in "\(folder.path) (\(folder.noteCount))" }.joined(separator: ", ")
             NSLog("granite snapshot: inbox %d; folders %@; listed %d; status %@", store.inboxCount, folders,
                   store.listed.count, store.status)
             // Quit from the run loop, not from inside this task.

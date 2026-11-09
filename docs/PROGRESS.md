@@ -18,8 +18,8 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 ## Phase 2: grounded memory
 | Item | Status | Where |
 |---|---|---|
-| `state.sqlite`: audit log, search events, metric snapshots | | |
-| Model router: labels, taint, budget, routes (on-device, PCC, Claude, MLX) | | `KBAI` |
+| `state.sqlite`: audit log, search events, metric snapshots | ✓ | `KBIndex.StateDatabase` |
+| Model router: labels, taint, budget, routes (on-device, PCC, Claude, MLX) | ◐ built; Claude needs your key | `KBAI`, spec `model-router.md` |
 | Hybrid search (BM25 + vectors + rerank) in the app and `granite-mcp`; background embedding | | |
 | Re-find eval harness on `.granite/eval/retrieval.jsonl` | ◐ harness exists (`granite-ml bench`); you: write 20+ queries | |
 | Grounded Q&A with verifier, abstention, Socratic mode | | |
@@ -38,7 +38,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Enrichment: Crossref, OpenAlex, Semantic Scholar (on request) | | |
 | Docling extraction for "study" papers (if installed) | | |
 | MCP `propose_change`, `create_derived_note` | | |
-| Budget enforcement (alert, hard stop for background jobs) | | |
+| Budget enforcement (alert, hard stop for background jobs) | ✓ (in the router) | `KBAI.Router` |
 
 ## Phase 4: edge features
 | Item | Status | Where |

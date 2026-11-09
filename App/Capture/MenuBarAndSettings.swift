@@ -1,3 +1,5 @@
+import KBAI
+import KBIndex
 import KeyboardShortcuts
 import SwiftUI
 
@@ -30,6 +32,7 @@ struct SettingsView: View {
             }
             LabeledContent("Captures go to:") { Text("Inbox/ (local-only AI label)") }
             GitSettingsSection(git: AppModel.shared.git)
+            AISettingsSection()
         }
         .padding(20)
         .frame(width: 480)
@@ -63,5 +66,77 @@ struct GitSettingsSection: View {
                 Button("Initialize git in this vault") { Task { await git.initialize() } }
             }
         }
+    }
+}
+
+/// Settings → AI: the Claude key (Keychain), which routes work, spend, and what left the Mac.
+struct AISettingsSection: View {
+    @Environment(VaultStore.self) private var store
+    @State private var key = ""
+    @State private var hasKey = APIKeyStore.isStored
+    @State private var routes: Set<ModelRoute> = []
+    @State private var spend = 0.0
+    @State private var egress: [EgressSummary] = []
+    @State private var message: String?
+
+    var body: some View {
+        Section("AI") {
+            if hasKey {
+                LabeledContent("Claude API key") {
+                    HStack {
+                        Text("Stored in the Keychain").foregroundStyle(.secondary)
+                        Button("Remove") {
+                            APIKeyStore.delete()
+                            hasKey = APIKeyStore.isStored
+                            Task { await refresh() }
+                        }
+                    }
+                }
+            } else {
+                HStack {
+                    SecureField("Claude API key (optional)", text: $key)
+                    Button("Save") {
+                        do {
+                            try APIKeyStore.save(key.trimmingCharacters(in: .whitespacesAndNewlines))
+                            key = ""
+                            hasKey = true
+                            Task { await refresh() }
+                        } catch {
+                            message = "\(error)"
+                        }
+                    }
+                    .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                Text("Without a key, granite uses Apple's on-device model. Notes labelled local or pcc never go to Claude.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            LabeledContent("Routes available") {
+                Text(ModelRoute.allCases.filter { routes.contains($0) }.map(\.rawValue).joined(separator: ", "))
+                    .foregroundStyle(.secondary)
+            }
+            LabeledContent("Spent this month") {
+                Text(String(format: "$%.2f of $%.0f (alert $%.0f, background jobs stop at $%.0f)", spend, store.budget.monthlyUSD, store.budget.alertUSD, store.budget.hardStopUSD))
+                    .foregroundStyle(.secondary)
+            }
+            if !egress.isEmpty {
+                LabeledContent("Sent this week") {
+                    VStack(alignment: .trailing) {
+                        ForEach(egress, id: \.route) { row in
+                            Text("\(row.route): \(row.calls) calls, \(row.notes) notes")
+                        }
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if let message { Text(message).font(.caption).foregroundStyle(.red) }
+        }
+        .task { await refresh() }
+    }
+
+    private func refresh() async {
+        guard let models = store.models else { return }
+        routes = await models.availability(refresh: true)
+        spend = await models.spendThisMonth()
+        egress = (try? store.state?.egress(since: Date().addingTimeInterval(-7 * 86_400))) ?? []
     }
 }

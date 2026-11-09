@@ -1,4 +1,5 @@
 import CryptoKit
+import KBAI
 import KBCapture
 import KBCore
 import KBIndex
@@ -28,7 +29,12 @@ final class VaultStore {
     private var renamer: RenameService?
     private var inbox: InboxQueue?
     private(set) var inboxItems: [InboxItem] = []
+    /// `state.sqlite`: audit log, feature events, search and Q&A logs, metrics.
+    private(set) var state: StateDatabase?
+    /// Every model call goes through this (routing, labels, budget, audit).
+    private(set) var models: ModelService?
     private var policy = VaultPolicy.builtIn
+    var budget: Budget { policy.budget ?? .standard }
 
     // MARK: Shell state
     enum SidebarItem: Hashable {
@@ -86,6 +92,10 @@ final class VaultStore {
         do {
             let policy = try VaultPolicy.load(vaultRoot: vault.root)
             self.policy = policy
+            let state = try StateDatabase(url: vault.supportDirectory.appending(path: "state.sqlite"))
+            self.state = state
+            models = ModelService(providers: ModelService.standardProviders(), state: state,
+                                  budget: policy.budget ?? .standard)
             let database = try IndexDatabase(url: vault.supportDirectory.appending(path: "index.sqlite"))
             let indexer = Indexer(database: database, vault: vault, policy: policy)
             self.database = database

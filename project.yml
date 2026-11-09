@@ -23,6 +23,8 @@ packages:
     path: Packages/KBCapture
   KBGit:
     path: Packages/KBGit
+  KBAI:
+    path: Packages/KBAI
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 3.1.0
@@ -44,6 +46,7 @@ targets:
       - package: KBIndex
       - package: KBCapture
       - package: KBGit
+      - package: KBAI
       - package: KeyboardShortcuts
     info:
       path: App/Info.plist
