@@ -51,7 +51,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Quarterly belief diff | ✓ | `KBAI.BeliefDiff`, spec `beliefs.md` |
 | App Intents entities: Spotlight and Siri | ◐ built; check in Spotlight/Siri from the installed app | `App/Intents`, spec `app-intents.md` |
 | Web clipper (Defuddle in a hidden web view) | ✓ | `Editor/src/clipper.ts`, `App/Clipper`, spec `clipper.md` |
-| Scoped LLM wiki under `AI/Wiki/<domain>/` | | |
+| Scoped LLM wiki under `AI/Wiki/<domain>/` | ✓ | `KBAI.WikiBuilder`, spec `wiki.md` |
 
 ## Waiting on you
 - Sign in the `claude` CLI and run the MCP smoke test (decision 0004).

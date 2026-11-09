@@ -95,6 +95,9 @@ struct MainView: View {
         .sheet(isPresented: $shell.showClip) {
             ClipSheet().environment(store)
         }
+        .sheet(isPresented: $shell.showWiki) {
+            WikiSheet().environment(store)
+        }
         .sheet(isPresented: $shell.showPromote) {
             if let promoting = shell.promoting {
                 ClaimSheet(mode: .promote(line: promoting.line), text: promoting.text).environment(store)

@@ -88,3 +88,40 @@ import Testing
         #expect(relation == .contradicts && reason == "Both can't hold.")
     }
 }
+
+@Suite struct WikiTests {
+    @Test func buildsVerifiedPagesFromSourcesOnly() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "granite-wiki-\(UUID().uuidString)")
+        let root = base.appending(path: "vault")
+        for (path, text) in [
+            "Papers/bm25.md": "---\ntype: source\nkind: paper\n---\n# BM25\n## Saturation\nBM25 saturates term frequency with the k1 parameter.\n",
+            "Clippings/rerank.md": "---\ntype: clipping\n---\n# Rerankers\nCross-encoders rerank the top candidates for precision.\n",
+            "Notes/My view.md": "BM25 saturates term frequency but I think it is overrated.\n",
+        ] {
+            let url = root.appending(path: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: url)
+        }
+        let vault = Vault(root: root)
+        let indexer = Indexer(database: try IndexDatabase(url: base.appending(path: "index.sqlite")), vault: vault, policy: .builtIn)
+        _ = try await indexer.reconcile()
+        let topics = #"{"topics": ["Saturation", "Reranking"]}"#
+        let page1 = #"{"sentences": [{"source": "c1", "quote": "BM25 saturates term frequency with the k1 parameter", "text": "BM25 caps the effect of repeated terms."}, {"source": "c1", "quote": "invented words", "text": "Unsupported claim."}]}"#
+        let page2 = #"{"sentences": []}"#
+        let provider = FakeProvider(.onDevice, results: [topics, page1, page2].map { .success(Generation(text: $0, inputTokens: 1, outputTokens: 1, model: "fake")) })
+        let searcher = HybridSearcher(database: indexer.database, vectors: nil, embedder: nil, reranker: nil)
+        let builder = WikiBuilder(models: ModelService(providers: [provider], state: nil), indexer: indexer,
+                                  writer: SafeWriter(vault: vault), searcher: searcher)
+        let domain = WikiDomain(name: "Retrieval")
+        #expect(try builder.sources(for: domain).map(\.path) == ["Clippings/rerank.md", "Papers/bm25.md"])
+        let report = try await builder.build(domain)
+        #expect(report.sources == 2 && report.localModel)
+        #expect(report.pages.first == "AI/Wiki/Retrieval/index.md")
+        let page = try String(contentsOf: root.appending(path: "AI/Wiki/Retrieval/Saturation.md"), encoding: .utf8)
+        #expect(page.contains("BM25 caps the effect of repeated terms. [[Papers/bm25#Saturation|bm25]]"))
+        #expect(!page.contains("Unsupported claim") && page.contains("[!warning]") && !page.contains("My view"))
+        #expect(report.skippedTopics == ["Reranking"])
+        let index = try String(contentsOf: root.appending(path: "AI/Wiki/Retrieval/index.md"), encoding: .utf8)
+        #expect(index.contains("[[AI/Wiki/Retrieval/Saturation|Saturation]]") && index.contains("Not enough in the sources for: Reranking."))
+    }
+}

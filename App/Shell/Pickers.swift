@@ -151,6 +151,7 @@ struct CommandPalette: View {
             Entry(id: "promote", title: "Promote selection to claim…", detail: "⌥⌘P") { shell.promoteSelection(store) },
             Entry(id: "claims", title: "Go to Claims", detail: "\(store.claims.count)") { store.selection = .claims },
             Entry(id: "metrics", title: "Metrics dashboard", detail: "§11") { shell.showMetrics = true },
+            Entry(id: "wiki", title: "Build a wiki for a domain…", detail: "AI/Wiki") { shell.showWiki = true },
             Entry(id: "beliefDiff", title: "Belief diff for this quarter", detail: "claims") { Task { await store.writeBeliefDiff() } },
             Entry(id: "trails", title: "Suggest trails from your links", detail: "proposals") { Task { await store.suggestTrails() } },
             Entry(id: "graph", title: "Expand this paper's literature graph", detail: "OpenAlex") { Task { await store.expandLiteratureGraph() } },

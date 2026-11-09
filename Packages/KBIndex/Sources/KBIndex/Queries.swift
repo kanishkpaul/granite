@@ -289,6 +289,16 @@ public struct NoteRecord: Sendable, Hashable {
     public let mtime: Double
 
     public var modified: Date { Date(timeIntervalSinceReferenceDate: mtime) }
+
+    public init(path: String, id: String?, title: String, type: String, origin: String, aiLabel: String, mtime: Double) {
+        self.path = path
+        self.id = id
+        self.title = title
+        self.type = type
+        self.origin = origin
+        self.aiLabel = aiLabel
+        self.mtime = mtime
+    }
 }
 
 extension IndexDatabase {

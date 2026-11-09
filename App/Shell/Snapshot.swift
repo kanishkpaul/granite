@@ -1,4 +1,5 @@
 import AppKit
+import KBAI
 import KBCore
 import SwiftUI
 import WebKit
@@ -57,6 +58,10 @@ enum SnapshotMode {
             }
             if let page = arguments.firstIndex(of: "--clip").flatMap({ $0 + 1 < arguments.count ? URL(string: arguments[$0 + 1]) : nil }) {
                 await store.clipPage(page)
+                NSLog("granite snapshot: %@", store.status)
+            }
+            if let domain = arguments.firstIndex(of: "--wiki").flatMap({ $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }) {
+                await store.buildWiki(KBAI.WikiDomain(name: domain))
                 NSLog("granite snapshot: %@", store.status)
             }
             if arguments.contains("--trails") {
