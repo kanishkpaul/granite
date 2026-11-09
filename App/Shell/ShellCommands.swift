@@ -1,0 +1,34 @@
+import SwiftUI
+
+/// Menu-bar commands (and their shortcuts) for the main window.
+struct ShellCommands: Commands {
+    let shell: ShellState
+    let store: VaultStore
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Note") { shell.switcherCreates = true; shell.showSwitcher = true }
+                .keyboardShortcut("n")
+            Button("Today's Daily Note") { Task { await store.openToday() } }
+                .keyboardShortcut("d")
+            Button("Capture…") { AppModel.shared.capture.show(trigger: .menu) }
+        }
+        CommandMenu("Go") {
+            Button("Open Note…") { shell.switcherCreates = false; shell.showSwitcher = true }
+                .keyboardShortcut("o")
+            Button("Command Palette…") { shell.showPalette = true }
+                .keyboardShortcut("k")
+            Button("Search Notes") { shell.focusSearch += 1 }
+                .keyboardShortcut("f")
+            Divider()
+            Button("Copy Link to Note") { store.copyWikilink() }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+            Button("Reveal in Finder") { store.revealInFinder() }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+        }
+        CommandGroup(after: .sidebar) {
+            Button("Toggle Inspector") { shell.showInspector.toggle() }
+                .keyboardShortcut("i", modifiers: [.command, .option])
+        }
+    }
+}

@@ -136,6 +136,9 @@ final class AutoCommitter {
         Task { await commit(allowAlarm: true) }
     }
 
+    /// Whether quitting should wait for a final commit.
+    var hasPendingChanges: Bool { dirty && isRepository && isEnabled }
+
     /// On quit: commit pending changes, bounded so quitting never hangs.
     func commitBeforeQuit() async {
         guard dirty, isRepository, isEnabled else { return }

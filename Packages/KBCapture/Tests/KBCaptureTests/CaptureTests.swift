@@ -120,3 +120,54 @@ func service(_ vault: Vault) -> CaptureService {
         #expect(request.why?.count == 1_000 && request.title?.count == 300)
     }
 }
+
+@Suite struct NoteFactoryTests {
+    func factory(_ vault: Vault) -> NoteFactory {
+        NoteFactory(vault: vault, writer: SafeWriter(vault: vault), timeZone: kolkata, now: { fixedDate })
+    }
+
+    @Test func createsUniqueNotesWithFrontmatter() async throws {
+        let vault = try tempVault()
+        let notes = factory(vault)
+        let first = try await notes.createNote(title: "Hybrid retrieval")
+        let second = try await notes.createNote(title: "Hybrid retrieval")
+        #expect(first == "Notes/Hybrid retrieval.md" && second == "Notes/Hybrid retrieval 2.md")
+        let note = NoteParser.parse(data: try Data(contentsOf: vault.url(for: first)), path: first, policy: .builtIn)
+        #expect(note.type == .note && note.origin == .human && note.id.flatMap(ULID.init) != nil)
+        #expect(note.frontmatter?["created"]?.text == "2026-11-09T14:32:05+05:30")
+        #expect(note.blocks.isEmpty)
+    }
+
+    @Test func concurrentCreatesNeverCollide() async throws {
+        let vault = try tempVault()
+        let notes = factory(vault)
+        let paths = try await withThrowingTaskGroup(of: String.self) { group in
+            for _ in 0..<4 { group.addTask { try await notes.createNote(title: "Same") } }
+            var all: [String] = []
+            for try await path in group { all.append(path) }
+            return all
+        }
+        #expect(Set(paths).count == 4)
+    }
+
+    @Test func sanitizesTitles() {
+        #expect(NoteFactory.fileName(for: "a/b: c? [[x]] #tag ^id | y") == "a b c x tag id y")
+        #expect(NoteFactory.fileName(for: "  ..hidden  ") == "hidden")
+        #expect(NoteFactory.fileName(for: "///") == "Untitled")
+        #expect(NoteFactory.fileName(for: String(repeating: "x", count: 300)).count == 120)
+    }
+
+    @Test func dailyNoteIsCreatedOnce() async throws {
+        let vault = try tempVault()
+        let notes = factory(vault)
+        let first = try await notes.dailyNote()
+        #expect(first.path == "Daily/2026-11-09.md" && first.created)
+        try Data("---\ntype: daily\n---\nmy day\n".utf8).write(to: vault.url(for: first.path))
+        let again = try await notes.dailyNote()
+        #expect(again.path == first.path && !again.created)
+        #expect(try String(contentsOf: vault.url(for: first.path), encoding: .utf8).hasSuffix("my day\n"))
+        let note = NoteParser.parse(data: try Data(contentsOf: vault.url(for: "Daily/2026-11-09.md")), path: "Daily/2026-11-09.md",
+                                    policy: .builtIn)
+        #expect(note.type == .daily)
+    }
+}

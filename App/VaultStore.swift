@@ -1,0 +1,363 @@
+import CryptoKit
+import KBCapture
+import KBCore
+import KBIndex
+import SwiftUI
+
+@MainActor
+@Observable
+final class VaultStore {
+    private(set) var vault: Vault?
+    private(set) var status = "Open a vault folder to index it."
+    private(set) var hits: [SearchHit] = []
+    private(set) var isIndexing = false
+    private(set) var openPath: String?
+    let editor = EditorController()
+
+    private var database: IndexDatabase?
+    private var indexer: Indexer?
+    private var writer: SafeWriter?
+    private var searchTask: Task<Void, Never>?
+    private var syncTask: Task<Void, Never>?
+    private var loadedVersion = 0
+    /// Hash of the open note's text as the editor last saw it; external edits differ from it.
+    private var editorHash: Data?
+    private var cursor = 0
+    private(set) var captureService: CaptureService?
+    private(set) var noteFactory: NoteFactory?
+    private var policy = VaultPolicy.builtIn
+
+    // MARK: Shell state
+    enum SidebarItem: Hashable {
+        case inbox
+        case all
+        case folder(String)
+
+        var folder: String {
+            switch self {
+            case .inbox: "Inbox"
+            case .all: ""
+            case .folder(let path): path
+            }
+        }
+    }
+
+    var selection: SidebarItem? = .inbox {
+        didSet { refreshList() }
+    }
+    private(set) var folders: [FolderInfo] = []
+    private(set) var listed: [NoteRecord] = []
+    private(set) var inboxCount = 0
+    private(set) var inspector: InspectorData?
+    /// Hooks for app-level services (auto-commit) that follow the vault.
+    var onVaultOpened: ((URL) -> Void)?
+    var onVaultChanged: (() -> Void)?
+
+    static let vaultKey = "granite.vaultPath"
+
+    init() {
+        editor.addListener { [weak self] message in self?.handle(message) }
+    }
+
+    /// Reopens the vault from the last session, if it still exists.
+    func reopenLastVault() async {
+        guard vault == nil, let path = UserDefaults.standard.string(forKey: Self.vaultKey) else { return }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+        await open(URL(filePath: path, directoryHint: .isDirectory))
+    }
+
+    func open(_ url: URL) async {
+        let vault = Vault(root: url)
+        self.vault = vault
+        UserDefaults.standard.set(vault.root.path(percentEncoded: false), forKey: Self.vaultKey)
+        let writer = SafeWriter(vault: vault)
+        self.writer = writer
+        // Capture works as soon as a vault is known: it needs no index.
+        captureService = CaptureService(vault: vault, writer: writer)
+        noteFactory = NoteFactory(vault: vault, writer: writer)
+        onVaultOpened?(vault.root)
+        isIndexing = true
+        status = "Indexing \(url.lastPathComponent)…"
+        syncTask?.cancel()
+        do {
+            let policy = try VaultPolicy.load(vaultRoot: vault.root)
+            self.policy = policy
+            let database = try IndexDatabase(url: vault.supportDirectory.appending(path: "index.sqlite"))
+            let indexer = Indexer(database: database, vault: vault, policy: policy)
+            self.database = database
+            self.indexer = indexer
+            // An existing index is usable right away; the watcher then replays only what changed
+            // while granite was closed, which may be nothing (so no update would arrive).
+            if !database.isFresh {
+                isIndexing = false
+                status = "\(url.lastPathComponent): \((try? database.stats().objects) ?? 0) notes"
+                refreshLists()
+            }
+            // Catches up from the last FSEvents ID (or reconciles), then follows every change.
+            let sync = VaultSync(indexer: indexer)
+            // The store lives as long as the app; the task is cancelled when another vault opens.
+            syncTask = Task {
+                do {
+                    try await sync.run { update in await self.applied(update) }
+                } catch {
+                    syncFailed(error)
+                }
+            }
+        } catch {
+            isIndexing = false
+            status = "Indexing failed: \(error)"
+        }
+    }
+
+    private func applied(_ update: SyncUpdate) {
+        isIndexing = false
+        refreshLists()
+        refreshInspector()
+        if update.kind == .fullReconcile || !update.paths.isEmpty { onVaultChanged?() }
+        status = update.kind == .fullReconcile ? update.report.description : "Updated \(update.paths.count) note(s)"
+        if let path = openPath, update.kind == .fullReconcile || update.paths.contains(path) {
+            reloadIfChangedOnDisk(path)
+        }
+    }
+
+    private func syncFailed(_ error: any Error) {
+        isIndexing = false
+        status = "File watching stopped: \(error)"
+    }
+
+    /// Another program changed the open note: show its version. (Phase 1 adds a keep-mine /
+    /// take-theirs banner when the editor also has unsaved changes.)
+    private func reloadIfChangedOnDisk(_ path: String) {
+        guard let vault else { return }
+        guard let data = try? Data(contentsOf: vault.url(for: path)) else {
+            status = "\(path) was deleted or moved on disk"
+            return
+        }
+        let hash = Data(SHA256.hash(data: data))
+        guard hash != editorHash else { return }
+        loadedVersion += 1
+        editorHash = hash
+        let text = String(decoding: data, as: UTF8.self)
+        editor.send(.load(path: path, text: text, version: loadedVersion, cursor: min(cursor, text.utf16.count)))
+        sendResolved(for: path)
+        status = "Reloaded \(path): changed on disk"
+    }
+
+    /// Debounced full-text search; the query runs off the main actor.
+    func search(_ text: String) {
+        searchTask?.cancel()
+        guard let database, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+            hits = []
+            return
+        }
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
+            let result = await Task.detached(priority: .userInitiated) { try? database.search(text) }.value
+            guard !Task.isCancelled else { return }
+            hits = result ?? []
+        }
+    }
+
+    struct NoVaultError: LocalizedError {
+        var errorDescription: String? { "Open a vault in granite first." }
+    }
+
+    /// Saves a capture to `Inbox/` and returns its path.
+    func capture(_ request: CaptureRequest) async throws -> String {
+        guard let captureService else { throw NoVaultError() }
+        let path = try await captureService.capture(request)
+        status = "Captured \(path)"
+        return path
+    }
+
+    func setWhy(_ why: String, for path: String) async throws {
+        guard let captureService else { throw NoVaultError() }
+        try await captureService.setWhy(why, for: path)
+    }
+
+    func openNote(id: String) {
+        guard let database, let record = try? database.note(id: id) else {
+            status = "No note with id \(id)"
+            return
+        }
+        openNote(record.path)
+    }
+
+    func openNote(_ path: String, line: Int? = nil) {
+        guard let vault else { return }
+        do {
+            let data = try Data(contentsOf: vault.url(for: path))
+            let text = String(decoding: data, as: UTF8.self)
+            loadedVersion += 1
+            openPath = path
+            editorHash = Data(SHA256.hash(data: data))
+            var cursor = 0
+            if let line, line > 1 {
+                cursor = text.split(separator: "\n", maxSplits: line - 1, omittingEmptySubsequences: false)
+                    .prefix(line - 1).reduce(0) { $0 + $1.utf16.count + 1 }
+            }
+            editor.send(.load(path: path, text: text, version: loadedVersion, cursor: cursor))
+            sendResolved(for: path)
+            refreshInspector()
+        } catch {
+            status = "Could not open \(path): \(error.localizedDescription)"
+        }
+    }
+
+    private func sendResolved(for path: String) {
+        guard let database else { return }
+        if let targets = try? database.resolvedTargets(from: path) { editor.send(.setResolved(targets: targets)) }
+    }
+
+    private func handle(_ message: EditorMessage) {
+        switch message {
+        case .changed(let version, let text):
+            guard let path = openPath, version > loadedVersion else { return }
+            loadedVersion = version
+            editorHash = Data(SHA256.hash(data: Data(text.utf8)))
+            Task { await save(text, to: path) }
+        case .selection(_, let head, _):
+            cursor = head
+        case .openLink(let target, _, _, _):
+            guard let from = openPath, let database else { return }
+            if let path = try? database.resolve(linkTarget: target, from: from) {
+                openNote(path)
+            } else {
+                status = "No note named “\(target)” yet."
+            }
+        default:
+            break
+        }
+    }
+
+    private func save(_ text: String, to path: String) async {
+        guard let writer, let indexer else { return }
+        do {
+            try await writer.write(text, to: path, as: .user)
+            _ = try await indexer.update(paths: [path])  // the watcher's echo is then a cheap hash match
+            if openPath == path { sendResolved(for: path) }
+            status = "Saved \(path)"
+        } catch {
+            status = "Save failed: \(error)"
+        }
+    }
+
+    // MARK: Shell
+
+    func refreshLists() {
+        guard let database else { return }
+        folders = (try? database.folders()) ?? []
+        inboxCount = folders.first { $0.path == "Inbox" }?.noteCount ?? 0
+        refreshList()
+    }
+
+    private func refreshList() {
+        guard let database, let selection else {
+            listed = []
+            return
+        }
+        listed = (try? database.notes(inFolder: selection.folder, limit: 500)) ?? []
+    }
+
+    func refreshInspector() {
+        guard let path = openPath, let vault, let data = try? Data(contentsOf: vault.url(for: path)) else {
+            inspector = nil
+            return
+        }
+        let note = NoteParser.parse(data: data, path: path, policy: policy)
+        let backlinks = (try? database?.backlinks(to: path)) ?? []
+        inspector = InspectorData(note: note, backlinks: backlinks)
+    }
+
+    func recentNotes(limit: Int = 20) -> [NoteRecord] {
+        (try? database?.recent(limit: limit)) ?? []
+    }
+
+    func titles(matching text: String, limit: Int = 30) -> [NoteSummary] {
+        (try? database?.titles(matching: text, limit: limit)) ?? []
+    }
+
+    /// ⌘N / switcher "Create": a new note in Notes/, indexed and opened.
+    func newNote(title: String) async {
+        guard let noteFactory else { return }
+        do {
+            let path = try await noteFactory.createNote(title: title)
+            _ = try await indexer?.update(paths: [path])
+            refreshLists()
+            openNote(path)
+        } catch {
+            status = "Could not create note: \(error)"
+        }
+    }
+
+    /// ⌘D: today's daily note, created if missing.
+    func openToday() async {
+        guard let noteFactory else { return }
+        do {
+            let (path, created) = try await noteFactory.dailyNote()
+            if created {
+                _ = try await indexer?.update(paths: [path])
+                refreshLists()
+            }
+            openNote(path)
+        } catch {
+            status = "Could not open today's note: \(error)"
+        }
+    }
+
+    func revealInFinder() {
+        guard let path = openPath, let vault else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([vault.url(for: path)])
+    }
+
+    func copyWikilink() {
+        guard let path = openPath else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("[[\(NoteParser.title(for: path))]]", forType: .string)
+        status = "Copied [[\(NoteParser.title(for: path))]]"
+    }
+}
+
+/// What the inspector shows for the open note: links in, then facts from its frontmatter.
+struct InspectorData {
+    struct Row: Identifiable {
+        let key: String
+        let value: String
+        var id: String { key }
+    }
+
+    let path: String
+    let backlinks: [Backlink]
+    let facts: [Row]
+    let properties: [Row]
+    let tags: [String]
+    let outgoing: Int
+
+    init(note: ParsedNote, backlinks: [Backlink]) {
+        path = note.path
+        self.backlinks = backlinks
+        tags = note.tags
+        outgoing = note.links.filter { $0.relation == Relation.untyped || Relation(rawValue: $0.relation) != nil }.count
+        var facts = [Row(key: "Type", value: note.type.rawValue + (note.kind.map { " · \($0)" } ?? "")),
+                     Row(key: "Origin", value: note.origin.rawValue),
+                     Row(key: "AI label", value: note.aiLabel.rawValue)]
+        if let status = note.status { facts.append(Row(key: "Status", value: status)) }
+        if let created = note.created { facts.append(Row(key: "Created", value: created)) }
+        self.facts = facts
+        let shown = Set(["id", "type", "kind", "origin", "status", "created", "tags", "ai"])
+        properties = (note.frontmatter?.properties ?? []).filter { !shown.contains($0.key) }.map { property in
+            Row(key: property.key, value: InspectorData.render(property.value))
+        }
+    }
+
+    static func render(_ value: PropertyValue) -> String {
+        switch value {
+        case .list(let items): items.map(render).joined(separator: ", ")
+        case .map(let map): map.keys.sorted().joined(separator: ", ")
+        case .null: "—"
+        default: value.text ?? ""
+        }
+    }
+}

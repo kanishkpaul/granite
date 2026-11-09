@@ -290,3 +290,28 @@ func rowid(_ database: IndexDatabase, _ path: String) throws -> Int64? {
         #expect(recall >= 0.9, "BM25 recall@10 on synthetic queries was \(recall)")
     }
 }
+
+@Suite struct BrowseTests {
+    @Test func foldersAndListing() async throws {
+        let temp = try TempVault()
+        try temp.put("Notes/a.md", "a\n")
+        try temp.put("Notes/Deep/b.md", "b\n")
+        try temp.put("Daily/2026-11-09.md", "d\n")
+        try temp.put("root.md", "r\n")
+        let (database, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        try temp.bumpMtime("Notes/Deep/b.md", by: 30)
+        _ = try await indexer.reconcile()
+
+        let folders = try database.folders()
+        #expect(folders.map(\.path) == ["Daily", "Notes", "Notes/Deep"])
+        #expect(folders.map(\.noteCount) == [1, 2, 1])
+        #expect(folders[2].name == "Deep" && folders[2].depth == 1)
+
+        #expect(try database.notes(inFolder: "Notes").map(\.path) == ["Notes/Deep/b.md", "Notes/a.md"])
+        #expect(try database.notes(inFolder: "Notes/").count == 2)
+        #expect(try database.notes(inFolder: "").count == 4)
+        #expect(try database.notes(inFolder: "Note").isEmpty, "a prefix of a folder name is not that folder")
+        #expect(try database.notes(inFolder: "Notes", limit: 1, offset: 1).map(\.path) == ["Notes/a.md"])
+    }
+}

@@ -16,6 +16,7 @@ final class AppModel {
     let store = VaultStore()
     let capture: CaptureController
     let git = AutoCommitter()
+    let shell = ShellState()
 
     private init() {
         capture = CaptureController(store: store)
