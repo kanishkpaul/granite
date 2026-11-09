@@ -85,6 +85,9 @@ struct MainView: View {
         .sheet(isPresented: $shell.showReview) {
             ReviewView().environment(store)
         }
+        .sheet(isPresented: $shell.showWeekly) {
+            WeeklyReviewView().environment(store)
+        }
         .sheet(isPresented: $shell.showPromote) {
             if let promoting = shell.promoting {
                 ClaimSheet(mode: .promote(line: promoting.line), text: promoting.text).environment(store)
@@ -157,6 +160,18 @@ struct SidebarView: View {
                             if store.dueCount > 0 { Text("\(store.dueCount)").foregroundStyle(.orange).monospacedDigit() }
                         }
                     } icon: { Image(systemName: "rectangle.on.rectangle.angled") }
+                }
+                .buttonStyle(.plain)
+                Button {
+                    AppModel.shared.shell.showWeekly = true
+                } label: {
+                    Label {
+                        HStack {
+                            Text("Weekly Review")
+                            Spacer()
+                            if store.weeklyReviewDue { Circle().fill(.orange).frame(width: 7, height: 7) }
+                        }
+                    } icon: { Image(systemName: "calendar.badge.checkmark") }
                 }
                 .buttonStyle(.plain)
             }

@@ -39,6 +39,7 @@ struct ShellCommands: Commands {
             Button("Review Prompts…") { shell.showReview = true }
                 .keyboardShortcut("r", modifiers: [.command, .control])
             Button("Make Prompts from Note") { Task { await store.makePrompts() } }
+            Button("Weekly Review…") { shell.showWeekly = true }
         }
         CommandGroup(after: .sidebar) {
             Button("Toggle Inspector") { shell.showInspector.toggle() }

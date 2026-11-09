@@ -1,4 +1,5 @@
 import AppKit
+import KBCore
 import SwiftUI
 import WebKit
 
@@ -16,6 +17,8 @@ enum SnapshotMode {
         let suggest = arguments.contains("--suggest")
         let makePrompts = arguments.contains("--make-prompts")
         let review = arguments.contains("--review")
+        let digest = arguments.contains("--digest")
+        let weekly = arguments.firstIndex(of: "--weekly").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let promoteLine = arguments.firstIndex(of: "--promote-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
         let importPDF = arguments.firstIndex(of: "--import-pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let pdfOpen = arguments.firstIndex(of: "--pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
@@ -27,6 +30,19 @@ enum SnapshotMode {
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
             if suggest { await store.suggestLinks() }
+            if let weekly {
+                // Challenge the answer against the notes, log what came back, then save it as this week's note.
+                let question = KBCore.WeeklyNote.questions[0]
+                if let result = try? await store.challenge(weekly, question: question) {
+                    NSLog("granite snapshot: challenge %@ · %d/%d verified: %@", result.route?.rawValue ?? "none", result.verifiedCount,
+                          result.sentences.count, result.sentences.map(\.text).joined(separator: " | "))
+                }
+                await store.saveWeeklyNote([(question: question, answer: weekly)])
+            }
+            if digest {
+                await store.runDigest()
+                NSLog("granite snapshot: %@", store.status)
+            }
             if makePrompts {
                 await store.makePrompts()
                 NSLog("granite snapshot: %@", store.status)

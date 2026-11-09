@@ -23,6 +23,8 @@ final class ShellState {
     var showSupersede = false
     /// The daily prompt review.
     var showReview = false
+    /// The weekly Socratic review.
+    var showWeekly = false
     /// "Import PDF…" file picker.
     var showImportPDF = false
     /// A question to run as soon as the Ask window opens (snapshot/debug mode).

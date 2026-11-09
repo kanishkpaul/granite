@@ -30,6 +30,8 @@ final class VaultStore {
     /// Spaced retrieval: see Review/Review.swift.
     var reviewQueue: ReviewQueue?
     var dueCount = 0
+    /// The 3 a.m. digest loop: see Nightly.swift.
+    var nightlyTask: Task<Void, Never>?
     /// Inline related items while writing: see Related.swift.
     var related = RelatedSession()
     /// PDF windows: the path the main window should open next, and where each should go (Papers.swift).
@@ -135,6 +137,7 @@ final class VaultStore {
             claimService = ClaimService(indexer: indexer, writer: writer)
             reviewQueue = ReviewQueue(indexer: indexer, writer: writer)
             scheduleSeeAlso()
+            scheduleNightly()
             // An existing index is usable right away; the watcher then replays only what changed
             // while granite was closed, which may be nothing (so no update would arrive).
             if !database.isFresh {
@@ -472,7 +475,8 @@ final class VaultStore {
             return
         }
         let note = NoteParser.parse(data: data, path: path, policy: policy)
-        let backlinks = (try? database?.backlinks(to: path)) ?? []
+        // Digests and proposals link to many notes; they aren't backlinks you wrote.
+        let backlinks = ((try? database?.backlinks(to: path)) ?? []).filter { !$0.path.hasPrefix("AI/") }
         inspector = InspectorData(note: note, backlinks: backlinks)
     }
 

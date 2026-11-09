@@ -1,3 +1,4 @@
+import KBCore
 import KBIndex
 import SwiftUI
 
@@ -145,6 +146,11 @@ struct CommandPalette: View {
             Entry(id: "importPDF", title: "Import PDF…", detail: "Papers/") { shell.showImportPDF = true },
             Entry(id: "promote", title: "Promote selection to claim…", detail: "⌥⌘P") { shell.promoteSelection(store) },
             Entry(id: "claims", title: "Go to Claims", detail: "\(store.claims.count)") { store.selection = .claims },
+            Entry(id: "weekly", title: "Weekly review…", detail: store.weeklyReviewDue ? "due" : "") { shell.showWeekly = true },
+            Entry(id: "digest", title: "Run digest now", detail: "AI/Digests") { Task { await store.runDigest() } },
+            Entry(id: "latestDigest", title: "Open latest digest", detail: store.latestDigest().map { NoteParser.title(for: $0) } ?? "none yet") {
+                if let path = store.latestDigest() { store.openNote(path) }
+            },
             Entry(id: "review", title: "Review prompts", detail: "\(store.dueCount) due · ⌃⌘R") { shell.showReview = true },
             Entry(id: "makePrompts", title: "Make prompts from this note", detail: "proposals") { Task { await store.makePrompts() } },
             Entry(id: "suggest", title: "Suggest links for this week's notes", detail: "proposals") {
