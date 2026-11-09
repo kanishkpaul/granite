@@ -12,9 +12,10 @@ let package = Package(
     dependencies: [
         .package(path: "../KBCore"),
         .package(path: "../KBIndex"),
+        .package(path: "../KBReview"),
     ],
     targets: [
-        .target(name: "KBAI", dependencies: ["KBCore", "KBIndex"]),
+        .target(name: "KBAI", dependencies: ["KBCore", "KBIndex", "KBReview"]),
         .testTarget(name: "KBAITests", dependencies: ["KBAI"]),
     ],
     swiftLanguageModes: [.v6]

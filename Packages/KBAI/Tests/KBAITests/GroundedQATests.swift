@@ -112,3 +112,27 @@ func hit(_ path: String, _ text: String, rerank: Double? = 0.8, label: String = 
         #expect(answer.route == .haiku && answer.label == .cloud && answer.sources.count == 1)
     }
 }
+
+@Suite struct PromptDrafterTests {
+    @Test func draftsBecomeProposalsThatAppendCallouts() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "granite-drafter-\(UUID().uuidString)")
+        let root = base.appending(path: "vault")
+        try FileManager.default.createDirectory(at: root.appending(path: "Notes"), withIntermediateDirectories: true)
+        let note = "# Retrieval\nHybrid search plus a reranker beats the choice of embedding model.\n\n> [!prompt] Already here?\n> Yes. ^p-xxxxxx\n"
+        try Data(note.utf8).write(to: root.appending(path: "Notes/Retrieval.md"))
+        let vault = Vault(root: root)
+        let indexer = Indexer(database: try IndexDatabase(url: base.appending(path: "index.sqlite")), vault: vault, policy: .builtIn)
+        _ = try await indexer.reconcile()
+        let store = ProposalStore(indexer: indexer, writer: SafeWriter(vault: vault), state: nil)
+        let reply = #"{"prompts": [{"question": "What beats the choice of embedding model?", "answer": "Hybrid search plus a reranker."}, {"question": "Already here?", "answer": "dup"}, {"question": "?", "answer": ""}]}"#
+        let provider = FakeProvider(.onDevice, results: [.success(Generation(text: reply, inputTokens: 10, outputTokens: 10, model: "fake"))])
+        let models = ModelService(providers: [provider], state: nil)
+        let paths = try await PromptDrafter(models: models, store: store).draft(path: "Notes/Retrieval.md", text: note, label: .local)
+        #expect(paths.count == 1)
+        let proposal = try #require(try await store.open().first)
+        #expect(proposal.kind == .prompt && proposal.feature == "make-prompts" && proposal.change.added.first == "> [!prompt] What beats the choice of embedding model?")
+        try await store.decide(try #require(proposal.path), .accept)
+        let updated = try String(contentsOf: root.appending(path: "Notes/Retrieval.md"), encoding: .utf8)
+        #expect(updated.contains("> [!prompt] What beats the choice of embedding model?\n> Hybrid search plus a reranker. ^p-"))
+    }
+}

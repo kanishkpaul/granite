@@ -31,7 +31,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Item | Status | Where |
 |---|---|---|
 | Claim ledger: promote, supersede, history view | ✓ | `KBCore.ClaimNote`, `KBIndex.ClaimService`, `App/Claims`, spec `claims.md` |
-| FSRS prompts (`> [!prompt]`), `reviews.jsonl`, review UI, "Make prompts" | | `KBReview` |
+| FSRS prompts (`> [!prompt]`), `reviews.jsonl`, review UI, "Make prompts" | ✓ | `KBReview`, `KBAI.PromptDrafter`, `App/Review`, spec `prompts.md` |
 | Lint (deterministic) + nightly digest, 3 a.m. scheduler | | |
 | Weekly Socratic review session | | |
 | Metrics dashboard + weekly `AI/Metrics/YYYY-Www.md` | | |

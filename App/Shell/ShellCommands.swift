@@ -36,6 +36,9 @@ struct ShellCommands: Commands {
                 .keyboardShortcut("p", modifiers: [.command, .option])
             Button("Supersede Claim…") { shell.showSupersede = true }
                 .disabled(!store.openNoteIsClaim)
+            Button("Review Prompts…") { shell.showReview = true }
+                .keyboardShortcut("r", modifiers: [.command, .control])
+            Button("Make Prompts from Note") { Task { await store.makePrompts() } }
         }
         CommandGroup(after: .sidebar) {
             Button("Toggle Inspector") { shell.showInspector.toggle() }

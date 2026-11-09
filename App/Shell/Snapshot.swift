@@ -14,6 +14,8 @@ enum SnapshotMode {
         let open = arguments.firstIndex(of: "--open").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let ask = arguments.firstIndex(of: "--ask").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let suggest = arguments.contains("--suggest")
+        let makePrompts = arguments.contains("--make-prompts")
+        let review = arguments.contains("--review")
         let promoteLine = arguments.firstIndex(of: "--promote-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
         let importPDF = arguments.firstIndex(of: "--import-pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let pdfOpen = arguments.firstIndex(of: "--pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
@@ -25,6 +27,14 @@ enum SnapshotMode {
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
             if suggest { await store.suggestLinks() }
+            if makePrompts {
+                await store.makePrompts()
+                NSLog("granite snapshot: %@", store.status)
+            }
+            if review {
+                AppModel.shared.shell.showReview = true
+                try? await Task.sleep(for: .seconds(2))
+            }
             if let promoteLine, let path = store.openPath, let vault = store.vault,
                let text = try? String(contentsOf: vault.url(for: path), encoding: .utf8) {
                 // Promote that line, then supersede the new claim once, and report the chain.
@@ -106,9 +116,10 @@ enum SnapshotMode {
                 }
             }
             let folders: String = store.folders.map { folder -> String in "\(folder.path) (\(folder.noteCount))" }.joined(separator: ", ")
-            NSLog("granite snapshot: inbox %d; proposals %d; folders %@; listed %d; status %@", store.inboxCount,
+            NSLog("granite snapshot: inbox %d; due %d; proposals %d; folders %@; listed %d; status %@", store.inboxCount, store.dueCount,
                   store.openProposals.count, folders, store.listed.count, store.status)
             AppModel.shared.shell.showAsk = false
+            AppModel.shared.shell.showReview = false
             // Quit from the run loop, not from inside this task.
             NSApplication.shared.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
         }

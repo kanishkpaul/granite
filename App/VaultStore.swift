@@ -3,6 +3,7 @@ import KBAI
 import KBCapture
 import KBCore
 import KBIndex
+import KBReview
 import SwiftUI
 
 @MainActor
@@ -26,6 +27,9 @@ final class VaultStore {
     /// The claim ledger: see Claims.swift.
     var claimService: ClaimService?
     var claims: [ClaimRecord] = []
+    /// Spaced retrieval: see Review/Review.swift.
+    var reviewQueue: ReviewQueue?
+    var dueCount = 0
     /// Inline related items while writing: see Related.swift.
     var related = RelatedSession()
     /// PDF windows: the path the main window should open next, and where each should go (Papers.swift).
@@ -129,6 +133,7 @@ final class VaultStore {
             inbox = InboxQueue(indexer: indexer, writer: writer, renamer: renamer)
             proposalStore = ProposalStore(indexer: indexer, writer: writer, state: state)
             claimService = ClaimService(indexer: indexer, writer: writer)
+            reviewQueue = ReviewQueue(indexer: indexer, writer: writer)
             scheduleSeeAlso()
             // An existing index is usable right away; the watcher then replays only what changed
             // while granite was closed, which may be nothing (so no update would arrive).
@@ -365,6 +370,7 @@ final class VaultStore {
             await refreshInbox()
             await refreshProposals()
             await refreshClaims()
+            await refreshDue()
         }
     }
 

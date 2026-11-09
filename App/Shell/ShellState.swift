@@ -21,6 +21,8 @@ final class ShellState {
     var promoting: (text: String, line: Int)?
     var showPromote = false
     var showSupersede = false
+    /// The daily prompt review.
+    var showReview = false
     /// "Import PDF…" file picker.
     var showImportPDF = false
     /// A question to run as soon as the Ask window opens (snapshot/debug mode).

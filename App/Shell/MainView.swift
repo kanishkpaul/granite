@@ -82,6 +82,9 @@ struct MainView: View {
         .sheet(isPresented: $shell.showAsk) {
             AskView().environment(store)
         }
+        .sheet(isPresented: $shell.showReview) {
+            ReviewView().environment(store)
+        }
         .sheet(isPresented: $shell.showPromote) {
             if let promoting = shell.promoting {
                 ClaimSheet(mode: .promote(line: promoting.line), text: promoting.text).environment(store)
@@ -142,6 +145,18 @@ struct SidebarView: View {
                     Task { await store.openToday() }
                 } label: {
                     Label("Today", systemImage: "calendar")
+                }
+                .buttonStyle(.plain)
+                Button {
+                    AppModel.shared.shell.showReview = true
+                } label: {
+                    Label {
+                        HStack {
+                            Text("Review")
+                            Spacer()
+                            if store.dueCount > 0 { Text("\(store.dueCount)").foregroundStyle(.orange).monospacedDigit() }
+                        }
+                    } icon: { Image(systemName: "rectangle.on.rectangle.angled") }
                 }
                 .buttonStyle(.plain)
             }

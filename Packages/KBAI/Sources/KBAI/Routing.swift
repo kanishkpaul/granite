@@ -29,12 +29,16 @@ public enum ModelTask: String, Sendable, CaseIterable, Codable {
     case qa, qaDeep, socratic
     case extraction, nli, digest
     case synthesis, beliefDiff
+    /// Drafting retrieval prompts from a note ("Make prompts").
+    case promptDraft
 
     /// Route preferences per effective label, best first (§6.1).
     public func preferences(for label: AILabel) -> [ModelRoute] {
         let candidates: [ModelRoute] = switch self {
         case .tagging, .linkReason, .contextPrefix, .triage:
             [.onDevice, .mlx]
+        case .promptDraft:
+            label == .cloud ? [.haiku, .onDevice, .mlx] : [.onDevice, .mlx, .pcc]
         case .qa:
             label == .cloud ? [.haiku, .pcc, .onDevice, .mlx] : [.pcc, .mlx, .onDevice]
         case .qaDeep:
