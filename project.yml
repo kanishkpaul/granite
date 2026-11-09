@@ -84,6 +84,8 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: granite
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        # Icon sources and renderer: Design/ (make_icon.py, render.swift).
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Non-sandboxed by design (master plan §3): shells out to git and extractors.
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: YES

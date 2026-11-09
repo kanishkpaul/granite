@@ -32,7 +32,7 @@ struct GraniteApp: App {
                     .frame(minWidth: 520, minHeight: 600)
             }
         }
-        MenuBarExtra("granite", systemImage: "square.and.pencil", isInserted: .constant(bench == nil)) {
+        MenuBarExtra("granite", image: "MenuBarIcon", isInserted: .constant(bench == nil)) {
             MenuBarContent()
         }
         Settings {
