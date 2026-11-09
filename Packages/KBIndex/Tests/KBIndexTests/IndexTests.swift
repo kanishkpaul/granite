@@ -222,6 +222,40 @@ func rowid(_ database: IndexDatabase, _ path: String) throws -> Int64? {
         #expect(try reader.note(id: "X1")?.path == "Notes/Embedding choice.md")
     }
 
+    @Test func scopedResolutionAfterIncrementalUpdates() async throws {
+        let temp = try seeded()
+        let (database, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        #expect(try database.unresolvedLinks().map(\.target) == ["nowhere"])
+
+        // A new note resolves a link in an unchanged note.
+        try temp.put("Inbox/nowhere.md", "now it exists\n")
+        _ = try await indexer.update(paths: ["Inbox/nowhere.md"])
+        #expect(try database.stats().unresolvedLinks == 0)
+        #expect(try database.backlinks(to: "Inbox/nowhere.md").map(\.path) == ["Notes/Hybrid retrieval.md"])
+
+        // Deleting the shorter-path match falls back to the remaining note with that name.
+        try temp.put("Archive/Deep/nowhere.md", "a second one\n")
+        _ = try await indexer.update(paths: ["Archive/Deep/nowhere.md"])
+        try temp.remove("Inbox/nowhere.md")
+        _ = try await indexer.update(paths: ["Inbox/nowhere.md"])
+        #expect(try database.backlinks(to: "Archive/Deep/nowhere.md").map(\.path) == ["Notes/Hybrid retrieval.md"])
+
+        // A path-suffix link ("folder/name") resolves when its note appears.
+        try temp.put("Notes/Suffix.md", "see [[Deep/Target]]\n")
+        _ = try await indexer.update(paths: ["Notes/Suffix.md"])
+        #expect(try database.stats().unresolvedLinks == 1)
+        try temp.put("Archive/Deep/Target.md", "target\n")
+        _ = try await indexer.update(paths: ["Archive/Deep/Target.md"])
+        #expect(try database.stats().unresolvedLinks == 0)
+
+        // Touch-only updates skip resolution entirely and change nothing.
+        try temp.bumpMtime("Notes/Suffix.md")
+        let touched = try await indexer.update(paths: ["Notes/Suffix.md"])
+        #expect(touched.touched == 1 && touched.parsed == 0)
+        #expect(try database.backlinks(to: "Archive/Deep/Target.md").count == 1)
+    }
+
     @Test func schemaVersionMismatchRebuilds() async throws {
         let temp = try seeded()
         do {

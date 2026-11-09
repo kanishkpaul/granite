@@ -193,3 +193,36 @@ func targets(_ note: ParsedNote) -> [String] { note.links.map(\.target) }
         #expect(AILabel.strictest([.cloud, .none, .local]) == AILabel.none)
     }
 }
+
+@Suite struct ChunkerTests {
+    func note(_ text: String, path: String = "Notes/Doc.md") -> ParsedNote {
+        NoteParser.parse(data: Data(text.utf8), path: path, policy: .builtIn)
+    }
+
+    @Test func splitsAtMajorHeadingsAndMergesSmallSections() {
+        let doc = note("# Top\nintro words here\n## A\nalpha text\n### A1\nsmall\n## B\nbravo text\n")
+        let chunks = Chunker.chunks(for: doc)
+        #expect(chunks.count == 3)
+        #expect(chunks.map(\.headingPath) == ["Top", "Top > A", "Top > B"])
+        #expect(chunks[1].text.contains("small"), "a small ### section stays with its ## section")
+        #expect(chunks[0].prefix == "Doc > Top")
+        #expect(chunks[1].embeddingText.hasPrefix("Doc > Top > A\n## A") == false)
+        #expect(chunks[1].embeddingText.hasPrefix("Doc > Top > A\nA"))
+    }
+
+    @Test func respectsTokenBudgetWithoutSplittingBlocks() {
+        let paragraph = Array(repeating: "word", count: 300).joined(separator: " ")
+        let code = "```\n" + Array(repeating: "let x = 1", count: 400).joined(separator: "\n") + "\n```"
+        let doc = note([paragraph, paragraph, paragraph, code, paragraph].joined(separator: "\n\n"))
+        let chunks = Chunker.chunks(for: doc)
+        #expect(chunks.count == 4)
+        #expect(chunks.allSatisfy { $0.tokens <= Chunker.targetTokens || $0.firstBlock == $0.lastBlock })
+        #expect(chunks.contains { $0.text.hasPrefix("let x = 1") || $0.text.contains("let x = 1\nlet x = 1") })
+        let covered = chunks.flatMap { Array($0.firstBlock...$0.lastBlock) }
+        #expect(covered == Array(0..<doc.blocks.count))
+    }
+
+    @Test func emptyNoteHasNoChunks() {
+        #expect(Chunker.chunks(for: note("---\ntitle: x\n---\n")).isEmpty)
+    }
+}

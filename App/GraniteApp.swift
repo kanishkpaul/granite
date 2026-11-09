@@ -1,3 +1,4 @@
+import CryptoKit
 import KBCore
 import KBIndex
 import SwiftUI
@@ -36,7 +37,11 @@ final class VaultStore {
     private var indexer: Indexer?
     private var writer: SafeWriter?
     private var searchTask: Task<Void, Never>?
+    private var syncTask: Task<Void, Never>?
     private var loadedVersion = 0
+    /// Hash of the open note's text as the editor last saw it; external edits differ from it.
+    private var editorHash: Data?
+    private var cursor = 0
 
     init() {
         editor.addListener { [weak self] message in self?.handle(message) }
@@ -47,19 +52,59 @@ final class VaultStore {
         self.vault = vault
         isIndexing = true
         status = "Indexing \(url.lastPathComponent)…"
-        defer { isIndexing = false }
+        syncTask?.cancel()
         do {
             let policy = try VaultPolicy.load(vaultRoot: vault.root)
             let database = try IndexDatabase(url: vault.supportDirectory.appending(path: "index.sqlite"))
             let indexer = Indexer(database: database, vault: vault, policy: policy)
-            let report = try await indexer.reconcile()
             self.database = database
             self.indexer = indexer
             self.writer = SafeWriter(vault: vault)
-            status = report.description
+            // Catches up from the last FSEvents ID (or reconciles), then follows every change.
+            let sync = VaultSync(indexer: indexer)
+            // The store lives as long as the app; the task is cancelled when another vault opens.
+            syncTask = Task {
+                do {
+                    try await sync.run { update in await self.applied(update) }
+                } catch {
+                    syncFailed(error)
+                }
+            }
         } catch {
+            isIndexing = false
             status = "Indexing failed: \(error)"
         }
+    }
+
+    private func applied(_ update: SyncUpdate) {
+        isIndexing = false
+        status = update.kind == .fullReconcile ? update.report.description : "Updated \(update.paths.count) note(s)"
+        if let path = openPath, update.kind == .fullReconcile || update.paths.contains(path) {
+            reloadIfChangedOnDisk(path)
+        }
+    }
+
+    private func syncFailed(_ error: any Error) {
+        isIndexing = false
+        status = "File watching stopped: \(error)"
+    }
+
+    /// Another program changed the open note: show its version. (Phase 1 adds a keep-mine /
+    /// take-theirs banner when the editor also has unsaved changes.)
+    private func reloadIfChangedOnDisk(_ path: String) {
+        guard let vault else { return }
+        guard let data = try? Data(contentsOf: vault.url(for: path)) else {
+            status = "\(path) was deleted or moved on disk"
+            return
+        }
+        let hash = Data(SHA256.hash(data: data))
+        guard hash != editorHash else { return }
+        loadedVersion += 1
+        editorHash = hash
+        let text = String(decoding: data, as: UTF8.self)
+        editor.send(.load(path: path, text: text, version: loadedVersion, cursor: min(cursor, text.utf16.count)))
+        sendResolved(for: path)
+        status = "Reloaded \(path): changed on disk"
     }
 
     /// Debounced full-text search; the query runs off the main actor.
@@ -81,9 +126,11 @@ final class VaultStore {
     func openNote(_ path: String, line: Int? = nil) {
         guard let vault else { return }
         do {
-            let text = try String(contentsOf: vault.url(for: path), encoding: .utf8)
+            let data = try Data(contentsOf: vault.url(for: path))
+            let text = String(decoding: data, as: UTF8.self)
             loadedVersion += 1
             openPath = path
+            editorHash = Data(SHA256.hash(data: data))
             var cursor = 0
             if let line, line > 1 {
                 cursor = text.split(separator: "\n", maxSplits: line - 1, omittingEmptySubsequences: false)
@@ -106,7 +153,10 @@ final class VaultStore {
         case .changed(let version, let text):
             guard let path = openPath, version > loadedVersion else { return }
             loadedVersion = version
+            editorHash = Data(SHA256.hash(data: Data(text.utf8)))
             Task { await save(text, to: path) }
+        case .selection(_, let head, _):
+            cursor = head
         case .openLink(let target, _, _, _):
             guard let from = openPath, let database else { return }
             if let path = try? database.resolve(linkTarget: target, from: from) {
@@ -123,7 +173,7 @@ final class VaultStore {
         guard let writer, let indexer else { return }
         do {
             try await writer.write(text, to: path, as: .user)
-            _ = try await indexer.update(paths: [path])
+            _ = try await indexer.update(paths: [path])  // the watcher's echo is then a cheap hash match
             if openPath == path { sendResolved(for: path) }
             status = "Saved \(path)"
         } catch {

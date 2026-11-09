@@ -44,11 +44,13 @@ public struct Vault: Sendable {
         return String(full.dropFirst(prefix.count))
     }
 
-    /// Every `.md` file in the vault, skipping hidden folders (`.obsidian`, `.git`, `.granite`, `.trash`).
-    public func markdownFiles() -> [FileStat] {
+    /// Every `.md` file in the vault (or under one vault-relative folder), skipping hidden folders
+    /// (`.obsidian`, `.git`, `.granite`, `.trash`).
+    public func markdownFiles(under folder: String? = nil) -> [FileStat] {
         let keys: [URLResourceKey] = [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey]
+        let start = folder.map { root.appending(path: $0, directoryHint: .isDirectory) } ?? root
         guard let enumerator = FileManager.default.enumerator(
-            at: root, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants]
+            at: start, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles, .skipsPackageDescendants]
         ) else { return [] }
         let base = root.path(percentEncoded: false)
         let prefixLength = base.hasSuffix("/") ? base.count : base.count + 1

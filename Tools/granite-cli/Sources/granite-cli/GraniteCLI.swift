@@ -11,7 +11,7 @@ struct GraniteCLI: AsyncParsableCommand {
         commandName: "granite-cli",
         abstract: "Index, search and inspect a granite vault from the terminal.",
         subcommands: [Fixture.self, Index.self, Search.self, Titles.self, Backlinks.self, Stats.self, Eval.self,
-                      Parse.self, Models.self]
+                      Parse.self, Models.self, Watch.self]
     )
 }
 
@@ -237,6 +237,30 @@ struct Models: AsyncParsableCommand {
             if let ms = status.latencyMs { line += String(format: "  %.0f ms", ms) }
             if let reply = status.reply { line += "  reply: \(reply.prefix(40))" }
             print(line)
+        }
+    }
+}
+
+struct Watch: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Keep the index current as files change (FSEvents); prints each update. Ctrl-C to stop.")
+
+    @OptionGroup var options: VaultOptions
+
+    func run() async throws {
+        setvbuf(stdout, nil, _IOLBF, 0)  // line-buffered, so `watch | tee` and log files update live
+        let database = try options.open()
+        let indexer = Indexer(database: database, vault: options.vaultValue, policy: try options.policy())
+        print("watching \(options.vaultValue.root.path(percentEncoded: false))")
+        try await VaultSync(indexer: indexer).run { update in
+            let stamp = Date().formatted(.iso8601.time(includingFractionalSeconds: true))
+            switch update.kind {
+            case .fullReconcile:
+                print("\(stamp) full reconcile: \(update.report)")
+            case .incremental:
+                let shown = update.paths.prefix(5).joined(separator: ", ") + (update.paths.count > 5 ? ", …" : "")
+                print("\(stamp) \(update.report)  [\(shown)]")
+            }
         }
     }
 }

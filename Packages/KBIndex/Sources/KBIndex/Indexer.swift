@@ -107,10 +107,41 @@ public actor Indexer {
         }
         report.scanned = batch.count
         let outcomes = await parse(batch) + missing.map { Outcome.missing($0) }
+        // Only parsed and removed notes can change link targets; touched files cannot.
+        var changed: [String] = []
+        var newKeys = Set<String>()
+        for outcome in outcomes {
+            switch outcome {
+            case .parsed(let note, _, _):
+                changed.append(note.path)
+                newKeys.formUnion([note.title.lowercased(), LinkRef.key(for: note.path)] + note.aliases.map { $0.lowercased() })
+            case .missing(let path):
+                changed.append(path)
+            case .touched:
+                break
+            }
+        }
+        let oldKeys = try await nameKeys(paths: changed)
         try await apply(outcomes, report: &report)
-        try await resolveLinks()
+        if !changed.isEmpty {
+            try await resolveLinks(scope: LinkScope(keys: oldKeys.union(newKeys), sourcePaths: changed))
+        }
         report.seconds = Self.seconds(clock.now - start)
         return report
+    }
+
+    /// Names a set of notes can be linked by (file name, path, aliases), from the index.
+    func nameKeys(paths: [String]) async throws -> Set<String> {
+        guard !paths.isEmpty else { return [] }
+        let json = String(decoding: try JSONEncoder().encode(paths), as: UTF8.self)
+        return try await database.pool.read { db in
+            Set(try String.fetchAll(db, sql: """
+                SELECT name_key FROM objects WHERE path IN (SELECT value FROM json_each(?1))
+                UNION SELECT path_key FROM objects WHERE path IN (SELECT value FROM json_each(?1))
+                UNION SELECT a.alias_key FROM aliases a JOIN objects o ON o.rowid = a.obj
+                  WHERE o.path IN (SELECT value FROM json_each(?1))
+                """, arguments: [json]))
+        }
     }
 
     func loadExisting(paths: [String]? = nil) async throws -> [String: Existing] {
@@ -202,7 +233,7 @@ public actor Indexer {
             // Its name or aliases may have changed: incoming links re-resolve in `resolveLinks`.
             try db.cachedStatement(sql: "UPDATE links SET dst = NULL WHERE dst = ? AND src != ?")
                 .execute(arguments: [existing, existing])
-            for table in ["aliases", "props", "tags", "links", "blocks"] {
+            for table in ["aliases", "props", "tags", "links", "chunks", "blocks"] {
                 try db.cachedStatement(sql: "DELETE FROM \(table) WHERE \(table == "links" ? "src" : "obj") = ?")
                     .execute(arguments: [existing])
             }
@@ -252,30 +283,70 @@ public actor Indexer {
             INSERT INTO blocks(obj, block_id, kind, heading_path, start_line, end_line, text, origin)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """)
-        for item in note.blocks where !item.text.isEmpty {
+        // Block ids by position in note.blocks, so chunks can point at their block range.
+        var blockIDs = [Int64?](repeating: nil, count: note.blocks.count)
+        for (index, item) in note.blocks.enumerated() where !item.text.isEmpty {
             try block.execute(arguments: [rowid, item.blockID, item.kind.rawValue, item.headingPath, item.startLine,
                                           item.endLine, item.text, note.origin.rawValue])
+            blockIDs[index] = db.lastInsertedRowID
         }
+
+        let chunk = try db.cachedStatement(sql: """
+            INSERT INTO chunks(obj, first_block, last_block, heading_path, prefix, text, tokens)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """)
+        for item in Chunker.chunks(for: note) {
+            let ids = blockIDs[item.firstBlock...item.lastBlock].compactMap { $0 }
+            guard let first = ids.first, let last = ids.last else { continue }
+            try chunk.execute(arguments: [rowid, first, last, item.headingPath, item.prefix, item.text, item.tokens])
+        }
+    }
+
+    /// Which links an incremental update may affect: links from the changed notes, and
+    /// unresolved links whose target (or its last path segment) is one of the changed notes' names.
+    struct LinkScope: Sendable {
+        let keys: Set<String>
+        let sourcePaths: [String]
     }
 
     /// Resolves unresolved links the way Obsidian does, in order: self-link, exact vault path,
     /// file name (shortest path wins), path suffix ("folder/name"), alias.
-    public func resolveLinks() async throws {
+    /// Without a scope every unresolved link is tried (full reconcile); with one, only affected links.
+    func resolveLinks(scope: LinkScope? = nil) async throws {
         try await database.pool.write { db in
+            var filter = ""
+            if let scope {
+                try db.execute(sql: """
+                    CREATE TEMP TABLE IF NOT EXISTS scope_keys(key TEXT PRIMARY KEY);
+                    CREATE TEMP TABLE IF NOT EXISTS scope_src(id INTEGER PRIMARY KEY);
+                    DELETE FROM scope_keys; DELETE FROM scope_src;
+                    """)
+                let key = try db.cachedStatement(sql: "INSERT OR IGNORE INTO scope_keys(key) VALUES (?)")
+                for value in scope.keys where !value.isEmpty { try key.execute(arguments: [value]) }
+                let source = try db.cachedStatement(sql: "INSERT OR IGNORE INTO scope_src(id) SELECT rowid FROM objects WHERE path = ?")
+                for path in scope.sourcePaths { try source.execute(arguments: [path]) }
+                filter = """
+                     AND (src IN (SELECT id FROM scope_src)
+                          OR target_key IN (SELECT key FROM scope_keys)
+                          OR (instr(target_key, '/') > 0
+                              AND substr(target_key, length(rtrim(target_key, replace(target_key, '/', ''))) + 1)
+                                  IN (SELECT key FROM scope_keys)))
+                    """
+            }
             try db.execute(sql: """
-            UPDATE links SET dst = src WHERE dst IS NULL AND target_key = '';
+            UPDATE links SET dst = src WHERE dst IS NULL AND target_key = ''\(filter);
             UPDATE links SET dst = (SELECT o.rowid FROM objects o WHERE o.path_key = links.target_key LIMIT 1)
-              WHERE dst IS NULL AND target_key != '';
+              WHERE dst IS NULL AND target_key != ''\(filter);
             UPDATE links SET dst = (SELECT o.rowid FROM objects o WHERE o.name_key = links.target_key
                                     ORDER BY length(o.path), o.path LIMIT 1)
-              WHERE dst IS NULL AND target_key != '' AND instr(target_key, '/') = 0;
+              WHERE dst IS NULL AND target_key != '' AND instr(target_key, '/') = 0\(filter);
             UPDATE links SET dst = (SELECT o.rowid FROM objects o
                                     WHERE o.name_key = substr(links.target_key, length(rtrim(links.target_key, replace(links.target_key, '/', ''))) + 1)
                                       AND o.path_key LIKE '%/' || links.target_key
                                     ORDER BY length(o.path) LIMIT 1)
-              WHERE dst IS NULL AND instr(target_key, '/') > 0;
+              WHERE dst IS NULL AND instr(target_key, '/') > 0\(filter);
             UPDATE links SET dst = (SELECT a.obj FROM aliases a WHERE a.alias_key = links.target_key LIMIT 1)
-              WHERE dst IS NULL AND target_key != '';
+              WHERE dst IS NULL AND target_key != ''\(filter);
             """)
         }
     }

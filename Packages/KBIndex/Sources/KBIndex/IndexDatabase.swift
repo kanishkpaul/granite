@@ -4,7 +4,7 @@ import GRDB
 /// `index.sqlite`: a disposable cache of the vault. Markdown is the truth.
 /// A schema change bumps `schemaVersion`; an index with any other version is deleted and rebuilt.
 public final class IndexDatabase: Sendable {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
 
     public let pool: DatabasePool
     public let url: URL
@@ -174,6 +174,32 @@ public final class IndexDatabase: Sendable {
             VALUES ('delete', old.id, old.text, old.heading_path);
           INSERT INTO blocks_fts(rowid, text, heading_path) VALUES (new.id, new.text, new.heading_path);
         END;
+
+        CREATE TABLE chunks(
+          id INTEGER PRIMARY KEY,
+          obj INTEGER NOT NULL REFERENCES objects(rowid) ON DELETE CASCADE,
+          first_block INTEGER NOT NULL,
+          last_block INTEGER NOT NULL,
+          heading_path TEXT NOT NULL,
+          prefix TEXT NOT NULL,
+          text TEXT NOT NULL,
+          tokens INTEGER NOT NULL
+        );
+        CREATE INDEX chunks_obj ON chunks(obj);
+
+        -- Normalized float32 vectors; deleted with their chunk, so edited notes re-embed.
+        CREATE TABLE chunk_vectors(
+          chunk INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
+          vector BLOB NOT NULL
+        );
+
+        -- One row: the model and chunker the stored vectors came from. A mismatch clears them.
+        CREATE TABLE embed_meta(
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          model_id TEXT NOT NULL,
+          dim INTEGER NOT NULL,
+          chunker_version INTEGER NOT NULL
+        );
 
         CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT);
         """)
