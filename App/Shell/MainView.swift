@@ -281,6 +281,7 @@ struct InspectorView: View {
                         .buttonStyle(.plain)
                     }
                 }
+                TrailInspectorSection()
                 if let path = store.openPath, store.openNoteIsClaim {
                     ClaimInspectorSection(path: path, superseding: $superseding)
                 }
@@ -289,6 +290,10 @@ struct InspectorView: View {
                         Button("Open PDF", systemImage: "doc.richtext") { store.openPDF(pdf) }
                         Button("Look Up (Crossref, OpenAlex)", systemImage: "globe") { Task { await store.enrichOpenPaper() } }
                             .help("Fills in authors, year, venue, abstract and citation counts. Sends only the DOI or title.")
+                        Button("Expand Literature Graph", systemImage: "point.3.connected.trianglepath.dotted") {
+                            Task { await store.expandLiteratureGraph() }
+                        }
+                        .help("Papers it cites and papers citing it (OpenAlex), ranked by your notes")
                         Button("Study with Docling", systemImage: "tablecells") { Task { await store.studyOpenPaper() } }
                             .disabled(!store.doclingInstalled)
                             .help(store.doclingInstalled ? "Structured text: sections and tables" : DoclingError.notInstalled.description)

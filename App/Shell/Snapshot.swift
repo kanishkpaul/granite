@@ -47,6 +47,14 @@ enum SnapshotMode {
                 await store.addRepo(URL(filePath: repo))
                 NSLog("granite snapshot: %@", store.status)
             }
+            if arguments.contains("--graph") {
+                await store.expandLiteratureGraph()
+                NSLog("granite snapshot: %@", store.status)
+            }
+            if arguments.contains("--trails") {
+                await store.suggestTrails()
+                NSLog("granite snapshot: %@", store.status)
+            }
             if arguments.contains("--enrich") {
                 await store.enrichOpenPaper()
                 NSLog("granite snapshot: %@", store.status)

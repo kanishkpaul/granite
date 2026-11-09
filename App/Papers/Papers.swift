@@ -95,6 +95,48 @@ extension VaultStore {
 
     var doclingInstalled: Bool { DoclingRunner.locate() != nil }
 
+    /// References and citing works of the open paper, ranked by closeness to your notes, written
+    /// to `AI/Reading/<citekey> graph.md`.
+    func expandLiteratureGraph() async {
+        guard let note = openPaperNote, let vault, let writer, let database, let citekey = PaperPaths.citekey(of: note),
+              let text = try? String(contentsOf: vault.url(for: note), encoding: .utf8) else {
+            status = "Open a paper's note first."
+            return
+        }
+        let frontmatter = MarkdownDocument(text: text).frontmatter
+        let searcher = semantic.hasVectors ? semantic.searcher : nil
+        let scorer: LiteratureGraph.Scorer = { text in
+            if let embedder = searcher?.embedder, let vectors = searcher?.vectors,
+               let vector = try? await embedder.embed(documents: [text]).first,
+               let nearest = try? await vectors.nearest(vector, k: 8) {
+                // The seed's own note and text would always win; the point is your other notes.
+                for match in nearest {
+                    guard let path = try? database.path(ofChunk: match.chunk), PaperPaths.citekey(of: path) != citekey,
+                          !path.hasPrefix("AI/") else { continue }
+                    return (Double(match.score), path)
+                }
+                return nil
+            }
+            // Without vectors: does a keyword search over your notes find anything?
+            let words = text.split(whereSeparator: { !$0.isLetter }).filter { $0.count > 4 }.prefix(6).joined(separator: " ")
+            guard !words.isEmpty, let hit = try? database.search(words, options: SearchOptions(limit: 1)).first else { return nil }
+            return (0.5, hit.path)
+        }
+        status = "Asking OpenAlex about \(citekey)…"
+        do {
+            let (seed, candidates) = try await LiteratureGraph().expand(seedID: frontmatter?["openalex"]?.text, doi: frontmatter?["doi"]?.text,
+                                                                        knownDOIs: (try? database.knownDOIs()) ?? [], scorer: scorer)
+            let path = "AI/Reading/\(citekey) graph.md"
+            try await writer.write(LiteratureGraph.render(seedTitle: seed.title ?? citekey, citekey: citekey, candidates: candidates,
+                                                          date: ClaimDay.string(Date())), to: path, as: .ai)
+            _ = try await indexer?.update(paths: [path])
+            status = "\(candidates.count) papers around \(citekey)"
+            openNote(path)
+        } catch {
+            status = "Could not expand: \(error)"
+        }
+    }
+
     /// "Study with Docling": structured text (sections, tables) replaces the page text.
     func studyOpenPaper() async {
         guard let note = openPaperNote, let vault, let writer, let citekey = PaperPaths.citekey(of: note) else { return }

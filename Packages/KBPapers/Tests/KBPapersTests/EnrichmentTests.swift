@@ -114,3 +114,43 @@ final class MockScholar: URLProtocol, @unchecked Sendable {
         #expect(DoclingRunner.locate(environment: ["PATH": "/nonexistent"]) == nil || true)
     }
 }
+
+@Suite(.serialized) struct LiteratureGraphTests {
+    @Test func expandsRanksAndSkipsKnownPapers() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GraphMock.self]
+        let client = ScholarlyClient(session: URLSession(configuration: configuration))
+        let graph = LiteratureGraph(client: client)
+        let (seed, candidates) = try await graph.expand(seedID: nil, doi: "10.1/seed", knownDOIs: ["10.1/known"]) { text in
+            text.lowercased().contains("rerank") ? (0.8, "Notes/Rerankers.md") : (0.2, nil)
+        }
+        #expect(seed.openAlexID == "W0")
+        #expect(candidates.map(\.record.title) == ["Reranking matters", "Older work", "A citing paper"])
+        #expect(candidates.first?.relation == .reference && candidates.last?.relation == .citedBy)
+        let note = LiteratureGraph.render(seedTitle: "Seed", citekey: "seed2024", candidates: candidates, date: "2026-11-09")
+        #expect(note.contains("## It cites\n- **Reranking matters** (2023) · [doi](https://doi.org/10.1/r) · closest: [[Notes/Rerankers|Rerankers]] (0.80)"))
+        #expect(note.contains("## Cited by") && !note.contains("Known paper"))
+    }
+}
+
+/// OpenAlex answers for one seed: two references (one already in the vault), one citing work.
+final class GraphMock: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url?.absoluteString ?? ""
+        let body: String
+        if url.contains("doi.org") {
+            body = #"{"id": "https://openalex.org/W0", "title": "Seed", "referenced_works": ["https://openalex.org/W1", "https://openalex.org/W2", "https://openalex.org/W3"]}"#
+        } else if url.contains("filter=openalex") {
+            body = #"{"results": [{"id": "W1", "title": "Reranking matters", "publication_year": 2023, "doi": "https://doi.org/10.1/r"}, {"id": "W2", "title": "Older work", "cited_by_count": 50}, {"id": "W3", "title": "Known paper", "doi": "https://doi.org/10.1/known"}]}"#
+        } else {
+            body = #"{"results": [{"id": "W9", "title": "A citing paper", "cited_by_count": 3}]}"#
+        }
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}

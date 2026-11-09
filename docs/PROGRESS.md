@@ -44,8 +44,8 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Item | Status | Where |
 |---|---|---|
 | Code decisions: repo scan, ADR import, commit trailers, decision proposals | ✓ | `KBCode`, `App/Code`, spec `code-decisions.md` |
-| Literature-graph expansion (OpenAlex references and cited-by, ranked by your claims) | | |
-| Trails (`kind: trail`), candidate trails as proposals | | |
+| Literature-graph expansion (OpenAlex references and cited-by, ranked by your notes) | ✓ | `KBPapers.LiteratureGraph`, spec `literature-graph.md` |
+| Trails (`kind: trail`), candidate trails as proposals, walking | ✓ | `KBCore.Trail`, `KBIndex.TrailSuggester`, `App/Trails`, spec `trails.md` |
 | Contradiction detection between held claims | | |
 | "New source touches a held claim" alerts | | |
 | Quarterly belief diff | | |

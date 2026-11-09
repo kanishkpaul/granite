@@ -30,6 +30,8 @@ final class VaultStore {
     /// Spaced retrieval: see Review/Review.swift.
     var reviewQueue: ReviewQueue?
     var dueCount = 0
+    /// The trail being walked: see Trails/Trails.swift.
+    var trailWalk: TrailWalk?
     /// The 3 a.m. digest loop: see Nightly.swift.
     var nightlyTask: Task<Void, Never>?
     /// Inline related items while writing: see Related.swift.

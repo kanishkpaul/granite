@@ -53,3 +53,21 @@ import Testing
         #expect(try ClaimTouches.find(in: database, sourcesSince: Date().addingTimeInterval(3600)).isEmpty)
     }
 }
+
+@Suite struct TrailSuggesterTests {
+    @Test func chainsFollowLinksWithoutRepeats() async throws {
+        let temp = try TempVault()
+        try temp.put("Notes/A.md", "Start: see [[B]].\n")
+        try temp.put("Notes/B.md", "Then [[C]].\n")
+        try temp.put("Notes/C.md", "Then [[D]] and back to [[A]].\n")
+        try temp.put("Notes/D.md", "End.\n")
+        try temp.put("Notes/X.md", "Only [[Y]].\n")
+        try temp.put("Notes/Y.md", "Short.\n")
+        try temp.put("Papers/p.md", "---\ntype: source\nkind: paper\ndoi: 10.1/ABC\n---\nPaper.\n")
+        let (database, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        let chains = try TrailSuggester.chains(in: database, since: .distantPast)
+        #expect(chains == [["Notes/A.md", "Notes/B.md", "Notes/C.md", "Notes/D.md"]])
+        #expect(try database.knownDOIs() == ["10.1/abc"])
+    }
+}

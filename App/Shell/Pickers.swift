@@ -150,6 +150,8 @@ struct CommandPalette: View {
             Entry(id: "promote", title: "Promote selection to claim…", detail: "⌥⌘P") { shell.promoteSelection(store) },
             Entry(id: "claims", title: "Go to Claims", detail: "\(store.claims.count)") { store.selection = .claims },
             Entry(id: "metrics", title: "Metrics dashboard", detail: "§11") { shell.showMetrics = true },
+            Entry(id: "trails", title: "Suggest trails from your links", detail: "proposals") { Task { await store.suggestTrails() } },
+            Entry(id: "graph", title: "Expand this paper's literature graph", detail: "OpenAlex") { Task { await store.expandLiteratureGraph() } },
             Entry(id: "scanRepos", title: "Scan code repositories", detail: "\(store.repos.count) repo(s)") { Task { await store.scanRepos() } },
             Entry(id: "weekly", title: "Weekly review…", detail: store.weeklyReviewDue ? "due" : "") { shell.showWeekly = true },
             Entry(id: "digest", title: "Run digest now", detail: "AI/Digests") { Task { await store.runDigest() } },

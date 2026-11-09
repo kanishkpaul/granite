@@ -131,7 +131,18 @@ struct AskView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                Text(footer(answer)).font(.caption2).foregroundStyle(.tertiary)
+                HStack {
+                    Text(footer(answer)).font(.caption2).foregroundStyle(.tertiary)
+                    Spacer()
+                    if Set(answer.sentences.filter(\.verified).compactMap(\.sourceID)).count >= 2 {
+                        Button("Make a Trail from These Sources") {
+                            let ids = answer.sentences.filter(\.verified).compactMap(\.sourceID)
+                            let paths = ids.compactMap { id in answer.sources.first { $0.id == id }?.hit.path }
+                            Task { await store.trailFromAnswer(question: answer.question, paths: paths) }
+                        }
+                        .buttonStyle(.link).font(.caption)
+                    }
+                }
             }
         }
     }
