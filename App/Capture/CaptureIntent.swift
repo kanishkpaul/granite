@@ -24,5 +24,11 @@ struct GraniteShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: CaptureToGraniteIntent(), phrases: ["Capture to \(.applicationName)"],
                     shortTitle: "Capture", systemImageName: "tray.and.arrow.down")
+        AppShortcut(intent: AskNotesIntent(), phrases: ["Ask \(.applicationName)", "Ask my notes in \(.applicationName)"],
+                    shortTitle: "Ask", systemImageName: "questionmark.bubble")
+        AppShortcut(intent: SearchNotesIntent(), phrases: ["Search \(.applicationName)"],
+                    shortTitle: "Search", systemImageName: "magnifyingglass")
+        AppShortcut(intent: OpenNoteIntent(), phrases: ["Open \(\.$target) in \(.applicationName)"],
+                    shortTitle: "Open Note", systemImageName: "doc.text")
     }
 }

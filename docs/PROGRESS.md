@@ -49,8 +49,8 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Contradiction detection between held claims | ✓ | `KBAI.ContradictionFinder`, digest, spec `beliefs.md` |
 | "New source touches a held claim" alerts | ✓ | NLI-checked in the digest + notification, spec `beliefs.md` |
 | Quarterly belief diff | ✓ | `KBAI.BeliefDiff`, spec `beliefs.md` |
-| App Intents entities: Spotlight and Siri | | |
-| Web clipper (Defuddle in a hidden web view) | | |
+| App Intents entities: Spotlight and Siri | ◐ built; check in Spotlight/Siri from the installed app | `App/Intents`, spec `app-intents.md` |
+| Web clipper (Defuddle in a hidden web view) | ✓ | `Editor/src/clipper.ts`, `App/Clipper`, spec `clipper.md` |
 | Scoped LLM wiki under `AI/Wiki/<domain>/` | | |
 
 ## Waiting on you
@@ -58,6 +58,8 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 - Editor checks by hand: CJK IME, drag and drop, VoiceOver (decision 0003).
 - Hotkey and Shortcuts capture by hand (`capture.md`).
 - 20+ re-find queries in `.granite/eval/retrieval.jsonl`.
+- Install granite in /Applications, then try Spotlight and "Ask granite" in Siri.
+- A clip bookmarklet: `javascript:location.href='granite://clip?url='+encodeURIComponent(location.href)`.
 - Optional: `pipx install docling`, then "Study with Docling" on a paper.
 - Import a few real papers (⌘K "Import PDF…" or drop them on the window) and check the extracted text.
 - Decide on link proposals for a few weeks: the acceptance rate tunes (and can pause) see-also.

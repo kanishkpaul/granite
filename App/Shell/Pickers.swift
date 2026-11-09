@@ -144,6 +144,7 @@ struct CommandPalette: View {
             Entry(id: "inbox", title: "Go to Inbox", detail: "\(store.inboxCount)") { store.selection = .inbox },
             Entry(id: "proposals", title: "Go to Proposals", detail: "\(store.openProposals.count)") { store.selection = .proposals },
             Entry(id: "importPDF", title: "Import PDF…", detail: "Papers/") { shell.showImportPDF = true },
+            Entry(id: "clip", title: "Clip a web page…", detail: "Clippings/") { shell.showClip = true },
             Entry(id: "enrich", title: "Look up this paper (Crossref, OpenAlex, Semantic Scholar)", detail: "DOI or title only") {
                 Task { await store.enrichOpenPaper() }
             },

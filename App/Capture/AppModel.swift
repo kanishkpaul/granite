@@ -53,6 +53,8 @@ final class AppModel {
             case .pdf(let path, let page, let block):
                 showMainWindow()
                 store.openPDF(path, page: page, block: block)
+            case .clip(let url, let why):
+                Task { await store.clipPage(url, why: why) }
             }
         } catch {
             NSLog("granite: ignored URL \(url.absoluteString.prefix(200)): \(error)")

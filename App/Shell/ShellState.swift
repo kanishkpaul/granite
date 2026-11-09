@@ -27,6 +27,8 @@ final class ShellState {
     var showWeekly = false
     /// The metrics dashboard.
     var showMetrics = false
+    /// The web clipper's URL prompt.
+    var showClip = false
     /// "Import PDF…" file picker.
     var showImportPDF = false
     /// A question to run as soon as the Ask window opens (snapshot/debug mode).

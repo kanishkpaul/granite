@@ -166,6 +166,12 @@ final class VaultStore {
     private func applied(_ update: SyncUpdate) {
         isIndexing = false
         refreshLists()
+        if update.kind == .fullReconcile {
+            Task { await reindexSpotlight() }
+        } else {
+            let paths = update.paths
+            Task { await updateSpotlight(paths: paths) }
+        }
         refreshInspector()
         if update.kind == .fullReconcile || !update.paths.isEmpty {
             onVaultChanged?()

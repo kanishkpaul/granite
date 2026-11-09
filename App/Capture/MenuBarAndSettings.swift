@@ -81,12 +81,17 @@ struct AISettingsSection: View {
     @State private var egress: [EgressSummary] = []
     @State private var message: String?
     @AppStorage(VaultStore.relatedEnabledKey) private var relatedOn = true
+    @AppStorage(VaultStore.spotlightKey) private var spotlightOn = true
 
     var body: some View {
         Section("AI") {
             Toggle("Semantic search (local; downloads ~0.4 GB once)", isOn: Binding(
                 get: { store.semantic.isEnabled }, set: { store.semantic.isEnabled = $0 }))
             Toggle("Show related notes while writing", isOn: $relatedOn)
+            Toggle("Spotlight and Siri can find notes (cloud and PCC labels only)", isOn: $spotlightOn)
+                .onChange(of: spotlightOn) { _, on in
+                    Task { if on { await store.reindexSpotlight(force: true) } else { await store.clearSpotlight() } }
+                }
             LocalModelSettings(local: store.localModel) { provider in Task { await store.models?.add(provider) } }
             if hasKey {
                 LabeledContent("Claude API key") {

@@ -11,6 +11,8 @@ public enum GraniteAction: Sendable, Hashable {
     /// `granite://pdf?path=Papers/pdf/x.pdf&page=3&block=p3-ab12cd`: the PDF view at a page,
     /// with that highlight marked.
     case pdf(path: String, page: Int, block: String?)
+    /// `granite://clip?url=https://…[&why=…]`: clip that page into Clippings/ (works as a bookmarklet).
+    case clip(url: URL, why: String?)
 }
 
 public enum GraniteURLError: Error, Equatable, CustomStringConvertible {
@@ -69,6 +71,11 @@ public enum GraniteURL {
                 throw GraniteURLError.invalid("path must be inside the vault")
             }
             return .open(path: path, id: nil)
+        case "clip":
+            guard let raw = query["url"], let page = URL(string: raw), ["http", "https"].contains(page.scheme?.lowercased() ?? "") else {
+                throw GraniteURLError.invalid("clip needs an http or https url")
+            }
+            return .clip(url: page, why: query["why"].map { String($0.prefix(maxWhy)) })
         case "pdf":
             guard let path = query["path"], path.lowercased().hasSuffix(".pdf") else { throw GraniteURLError.invalid("pdf needs a .pdf path") }
             let parts = path.split(separator: "/")
