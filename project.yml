@@ -1,0 +1,136 @@
+# XcodeGen spec. Never edit granite.xcodeproj by hand: edit this file and run `xcodegen`.
+name: granite
+options:
+  bundleIdPrefix: local.granite
+  deploymentTarget:
+    macOS: "27.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MACOSX_DEPLOYMENT_TARGET: "27.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  KBCore:
+    path: Packages/KBCore
+  KBIndex:
+    path: Packages/KBIndex
+  KBCapture:
+    path: Packages/KBCapture
+  KBGit:
+    path: Packages/KBGit
+  KBPapers:
+    path: Packages/KBPapers
+  KBReview:
+    path: Packages/KBReview
+  KBCode:
+    path: Packages/KBCode
+  KBAI:
+    path: Packages/KBAI
+  KBAIMLX:
+    path: Packages/KBAIMLX
+  GraniteMCP:
+    path: Tools/granite-mcp
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 3.1.0
+
+targets:
+  granite:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - "Resources/editor/**"
+          - "MCPHelper/**"
+      # Built by `pnpm build` in Editor/; copied as a folder so editor.html finds editor.js.
+      - path: App/Resources/editor
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: KBCore
+      - package: KBIndex
+      - package: KBCapture
+      - package: KBGit
+      - package: KBPapers
+      - package: KBReview
+      - package: KBCode
+      - package: KBAI
+      - package: KBAIMLX
+      - package: KeyboardShortcuts
+      # The bundled MCP server lands in Contents/MacOS next to the app binary.
+      - target: granite-mcp
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: local.granite.app
+            CFBundleURLSchemes: [granite]
+    settings:
+      base:
+        PRODUCT_NAME: granite
+        PRODUCT_BUNDLE_IDENTIFIER: local.granite.app
+        MARKETING_VERSION: "0.0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: granite
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        # Non-sandboxed by design (master plan §3): shells out to git and extractors.
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+
+  granite-mcp:
+    type: tool
+    platform: macOS
+    sources:
+      - path: App/MCPHelper
+    dependencies:
+      - package: GraniteMCP
+        product: GraniteMCPKit
+      - package: KBAIMLX
+      - package: KBIndex
+    settings:
+      base:
+        PRODUCT_NAME: granite-mcp
+        PRODUCT_BUNDLE_IDENTIFIER: local.granite.mcp
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+
+  graniteTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/AppTests
+      - path: Editor/test/fixtures/bridge-messages.json
+        buildPhase: resources
+    dependencies:
+      - target: granite
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: local.granite.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/granite.app/Contents/MacOS/granite"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_IDENTITY: "-"
+
+schemes:
+  granite:
+    build:
+      targets:
+        granite: all
+        granite-mcp: all
+        graniteTests: [test]
+    test:
+      targets:
+        - graniteTests

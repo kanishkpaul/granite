@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(~/Vault/**)",
+      "Write(~/Vault/**)",
+      "Bash(rm -rf ~/Vault*)",
+      "Bash(rm -rf /*)"
+    ]
+  }
+}
