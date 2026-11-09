@@ -9,15 +9,20 @@ import SwiftUI
 @Observable
 final class VaultStore {
     private(set) var vault: Vault?
-    private(set) var status = "Open a vault folder to index it."
+    var status = "Open a vault folder to index it."
     private(set) var hits: [SearchHit] = []
     private(set) var isIndexing = false
     private(set) var openPath: String?
     let editor = EditorController()
 
-    private var database: IndexDatabase?
-    private var indexer: Indexer?
-    private var writer: SafeWriter?
+    private(set) var database: IndexDatabase?
+    private(set) var indexer: Indexer?
+    private(set) var writer: SafeWriter?
+    /// AI proposals (AI/Proposals/): see Proposals.swift.
+    var proposalStore: ProposalStore?
+    var openProposals: [Proposal] = []
+    var pausedFeatures: [String] = []
+    var proposalTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
     private var loadedVersion = 0
@@ -36,18 +41,20 @@ final class VaultStore {
     /// Local embeddings, background embedding, hybrid search.
     let semantic = SemanticEngine()
     private var lastSearch: (id: Int64, at: Date, paths: [String])?
-    private var policy = VaultPolicy.builtIn
+    private(set) var policy = VaultPolicy.builtIn
     var budget: Budget { policy.budget ?? .standard }
 
     // MARK: Shell state
     enum SidebarItem: Hashable {
         case inbox
+        case proposals
         case all
         case folder(String)
 
         var folder: String {
             switch self {
             case .inbox: "Inbox"
+            case .proposals: "AI/Proposals"
             case .all: ""
             case .folder(let path): path
             }
@@ -107,6 +114,8 @@ final class VaultStore {
             let renamer = RenameService(indexer: indexer, writer: writer)
             self.renamer = renamer
             inbox = InboxQueue(indexer: indexer, writer: writer, renamer: renamer)
+            proposalStore = ProposalStore(indexer: indexer, writer: writer, state: state)
+            scheduleSeeAlso()
             // An existing index is usable right away; the watcher then replays only what changed
             // while granite was closed, which may be nothing (so no update would arrive).
             if !database.isFresh {
@@ -318,7 +327,10 @@ final class VaultStore {
         folders = (try? database.folders()) ?? []
         inboxCount = folders.first { $0.path == "Inbox" }?.noteCount ?? 0
         refreshList()
-        Task { await refreshInbox() }
+        Task {
+            await refreshInbox()
+            await refreshProposals()
+        }
     }
 
     func refreshInbox() async {

@@ -24,7 +24,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Re-find eval harness on `.granite/eval/retrieval.jsonl` | ◐ harness exists (`granite-ml bench`); you: write 20+ queries | |
 | Grounded Q&A with verifier, abstention, Socratic mode | ✓ | `KBAI.GroundedQA`, `App/Shell/AskView.swift`, spec `qa.md` |
 | Inline related items (≤ 3 ghost links), acceptance tracking, auto-pause | | |
-| Proposal queue v1 (`AI/Proposals/`, accept/edit/reject) | | |
+| Proposal queue v1 (`AI/Proposals/`, accept/edit/reject, `AI/log.md`, cap 25, auto-pause) + see-also link proposals | ✓ | `KBCore.Proposal`, `KBIndex.ProposalStore`, `KBIndex.SeeAlsoJob`, `App/Shell/ProposalsView.swift`, spec `proposals.md` |
 | Papers: native PDF import, PDF view, highlights to blocks, jump to cited passage (Zotero deferred, 0005) | | |
 
 ## Phase 3: compounding loops
@@ -58,4 +58,5 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 - Editor checks by hand: CJK IME, drag and drop, VoiceOver (decision 0003).
 - Hotkey and Shortcuts capture by hand (`capture.md`).
 - 20+ re-find queries in `.granite/eval/retrieval.jsonl`.
+- Decide on link proposals for a few weeks: the acceptance rate tunes (and can pause) see-also.
 - Optional: a Claude API key (Settings) for the cloud routes; a Developer ID team for PCC (decision 0004).

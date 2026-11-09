@@ -141,6 +141,10 @@ struct CommandPalette: View {
             Entry(id: "rename", title: "Rename note…", detail: "updates links") { shell.showRename = true },
             Entry(id: "move", title: "Move note to folder…", detail: "") { shell.showMove = true },
             Entry(id: "inbox", title: "Go to Inbox", detail: "\(store.inboxCount)") { store.selection = .inbox },
+            Entry(id: "proposals", title: "Go to Proposals", detail: "\(store.openProposals.count)") { store.selection = .proposals },
+            Entry(id: "suggest", title: "Suggest links for this week's notes", detail: "proposals") {
+                Task { await store.suggestLinks() }
+            },
             Entry(id: "reveal", title: "Reveal note in Finder", detail: "") { store.revealInFinder() },
             Entry(id: "commit", title: "Commit vault to git now", detail: git.isRepository ? "" : "not a git repository") {
                 Task { await git.commit() }

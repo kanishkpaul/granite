@@ -93,6 +93,16 @@ struct SidebarView: View {
                     }
                 } icon: { Image(systemName: "tray") }
                 .tag(VaultStore.SidebarItem.inbox)
+                Label {
+                    HStack {
+                        Text("Proposals")
+                        Spacer()
+                        if !store.openProposals.isEmpty {
+                            Text("\(store.openProposals.count)").foregroundStyle(.secondary).monospacedDigit()
+                        }
+                    }
+                } icon: { Image(systemName: "sparkles") }
+                .tag(VaultStore.SidebarItem.proposals)
                 Label("All notes", systemImage: "doc.on.doc").tag(VaultStore.SidebarItem.all)
                 Button {
                     Task { await store.openToday() }
@@ -102,7 +112,7 @@ struct SidebarView: View {
                 .buttonStyle(.plain)
             }
             Section("Folders") {
-                ForEach(store.folders.filter { $0.path != "Inbox" }) { folder in
+                ForEach(store.folders.filter { $0.path != "Inbox" && $0.path != "AI/Proposals" }) { folder in
                     HStack {
                         Text(folder.name)
                         Spacer()
@@ -125,6 +135,8 @@ struct NoteListView: View {
         Group {
             if query.trimmingCharacters(in: .whitespaces).isEmpty && store.selection == .inbox {
                 InboxView()
+            } else if query.trimmingCharacters(in: .whitespaces).isEmpty && store.selection == .proposals {
+                ProposalsView()
             } else if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 List(store.listed, id: \.path) { note in
                     row(title: note.title, detail: folder(of: note.path), trailing: note.modified.formatted(.relative(presentation: .named)),
