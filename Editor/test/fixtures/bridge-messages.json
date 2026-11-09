@@ -1,0 +1,31 @@
+{
+  "host": [
+    { "type": "load", "path": "Notes/Hybrid retrieval.md", "text": "# Title\n\nSee [[Other|alias]] — café ✓\r\n", "version": 3, "cursor": 2 },
+    { "type": "load", "path": "Inbox/x.md", "text": "", "version": 0 },
+    { "type": "setResolved", "targets": ["other", "notes/hybrid retrieval"] },
+    { "type": "command", "name": "undo" },
+    { "type": "command", "name": "redo" },
+    { "type": "command", "name": "focus" },
+    { "type": "command", "name": "selectAll" },
+    { "type": "bench", "lines": [1, 25000, 50000], "keystrokes": 60, "scrollMs": 3000 }
+  ],
+  "editor": [
+    { "type": "ready", "protocol": 1 },
+    { "type": "loaded", "version": 3, "ms": 41.5 },
+    { "type": "changed", "version": 4, "text": "# Title\n\nedited ✓" },
+    { "type": "selection", "anchor": 5, "head": 9, "line": 1 },
+    { "type": "openLink", "target": "Other", "heading": "Part", "newPane": false },
+    { "type": "openLink", "target": "anthropic2024contextual", "blockID": "z-7HQ2KX9P", "newPane": true },
+    { "type": "benchResult", "result": { "typing": [1.5, 2.25], "parsedTyping": [1], "parseMs": [250.5], "domTyping": [3], "scrollFrames": [16.7], "undoRestored": true, "redoReapplied": true, "docLines": 50000 } },
+    { "type": "log", "level": "error", "message": "bad message" }
+  ],
+  "invalidHost": [
+    { "type": "nope" },
+    { "type": "load", "path": "x.md", "text": "x" },
+    { "type": "load", "path": "x.md", "text": 5, "version": 1 },
+    { "type": "command", "name": "deleteEverything" },
+    { "type": "setResolved", "targets": [1, 2] },
+    "not json",
+    null
+  ]
+}

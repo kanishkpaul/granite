@@ -223,3 +223,43 @@ extension IndexDatabase {
         }
     }
 }
+
+extension IndexDatabase {
+    /// Lowercased link keys in a note that resolve to an indexed note, for editor styling.
+    public func resolvedTargets(from path: String) throws -> [String] {
+        try pool.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT DISTINCT l.target_key FROM links l JOIN objects o ON o.rowid = l.src
+                WHERE o.path = ? AND l.dst IS NOT NULL AND l.target_key != ''
+                ORDER BY l.target_key
+                """, arguments: [path])
+        }
+    }
+}
+
+extension IndexDatabase {
+    /// Resolves a link target to a vault path, in the same order the indexer uses:
+    /// exact path, file name (shortest path wins), path suffix, alias. Empty target = `from`.
+    public func resolve(linkTarget target: String, from path: String) throws -> String? {
+        let key = LinkRef.key(for: target)
+        if key.isEmpty { return path }
+        return try pool.read { db in
+            if let exact = try String.fetchOne(db, sql: "SELECT path FROM objects WHERE path_key = ?", arguments: [key]) {
+                return exact
+            }
+            if !key.contains("/"),
+               let byName = try String.fetchOne(db, sql: "SELECT path FROM objects WHERE name_key = ? ORDER BY length(path), path LIMIT 1",
+                                               arguments: [key]) {
+                return byName
+            }
+            if key.contains("/"),
+               let bySuffix = try String.fetchOne(db, sql: "SELECT path FROM objects WHERE path_key LIKE '%/' || ? ORDER BY length(path) LIMIT 1",
+                                                 arguments: [key]) {
+                return bySuffix
+            }
+            return try String.fetchOne(db, sql: """
+                SELECT o.path FROM aliases a JOIN objects o ON o.rowid = a.obj WHERE a.alias_key = ? LIMIT 1
+                """, arguments: [key])
+        }
+    }
+}

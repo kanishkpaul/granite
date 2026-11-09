@@ -91,6 +91,14 @@ func rowid(_ database: IndexDatabase, _ path: String) throws -> Int64? {
         let cites = try database.backlinks(to: "Papers/anthropic2024contextual.md")
         #expect(cites.map(\.relation) == ["source"])
         #expect(try database.backlinks(to: "Archive/Folder/Deep note.md").count == 1)
+        #expect(try database.resolvedTargets(from: "Notes/Hybrid retrieval.md")
+            == ["anthropic2024contextual", "embedding choice", "folder/deep note"])
+        let from = "Notes/Hybrid retrieval.md"
+        #expect(try database.resolve(linkTarget: "Embedding choice", from: from) == "Notes/Embedding choice.md")
+        #expect(try database.resolve(linkTarget: "folder/Deep note", from: from) == "Archive/Folder/Deep note.md")
+        #expect(try database.resolve(linkTarget: "Hybrid search", from: from) == from)
+        #expect(try database.resolve(linkTarget: "", from: from) == from)
+        #expect(try database.resolve(linkTarget: "nowhere", from: from) == nil)
     }
 
     @Test func searchRespectsEvidenceScopeAndLabels() async throws {

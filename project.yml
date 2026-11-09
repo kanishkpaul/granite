@@ -26,6 +26,12 @@ targets:
     platform: macOS
     sources:
       - path: App
+        excludes:
+          - "Resources/editor/**"
+      # Built by `pnpm build` in Editor/; copied as a folder so editor.html finds editor.js.
+      - path: App/Resources/editor
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: KBCore
       - package: KBIndex
@@ -43,3 +49,30 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "-"
+
+  graniteTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/AppTests
+      - path: Editor/test/fixtures/bridge-messages.json
+        buildPhase: resources
+    dependencies:
+      - target: granite
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: local.granite.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/granite.app/Contents/MacOS/granite"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_IDENTITY: "-"
+
+schemes:
+  granite:
+    build:
+      targets:
+        granite: all
+        graniteTests: [test]
+    test:
+      targets:
+        - graniteTests

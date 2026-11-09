@@ -161,13 +161,15 @@ granite/
   README.md
   CLAUDE.md                 rules for coding agents
   project.yml               XcodeGen spec (run `xcodegen`; the .xcodeproj is not committed)
-  App/                      thin SwiftUI shell: open a vault, index, search
+  App/                      thin SwiftUI shell: open a vault, search, edit (Bridges/ hosts the editor)
+  Editor/                   CodeMirror 6 editor (TypeScript, Vite, Vitest); builds into App/Resources/editor
   Packages/
     KBCore/                 vault model, frontmatter, Obsidian-syntax parser, policy, SafeWriter
     KBIndex/                GRDB index.sqlite, reconcile, FTS5 search, backlinks
     KBTestSupport/          deterministic fixture-vault generator
   Tools/granite-cli/        fixture · index · search · titles · backlinks · stats · eval · parse
-  scripts/test-all.sh       swift test for every package (+ --app to build the app)
+  Tests/AppTests/           app tests (editor bridge round-trip)
+  scripts/test-all.sh       swift test, Vitest and the editor build (+ --app for the app's tests)
   docs/
     MASTER-PLAN.md          architecture, schemas, AI layer, roadmap, first 10 days
     specs/                  one spec per feature
@@ -185,7 +187,7 @@ cd Tools/granite-cli && swift build -c release
 .build/release/granite-cli search --vault /tmp/g50k --db /tmp/g50k-index/index.sqlite some words
 ```
 
-The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBAI`, `KBCode`) and the `Editor/` web bundle arrive with their phases.
+The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBAI`, `KBCode`) arrive with their phases.
 
 ## Research
 
