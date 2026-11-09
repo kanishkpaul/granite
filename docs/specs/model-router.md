@@ -17,7 +17,7 @@ Status: **built** (phase 2). Plan refs: §6.1 routing, §6.6 audit, §6.7 budget
 |---|---|---|
 | on-device, pcc | `AppleProvider` (FoundationModels) | Structured output by guided generation over a dynamic schema; documents inlined, untrusted ones fenced as data |
 | haiku, sonnet, opus | `ClaudeProvider` (Messages API over HTTPS, API version `2026-10-21`) | Grounded answers send passages as `document` blocks with citations; structured output via `output_config.format` (not combined with citations); Sonnet and Opus use server-side refusal fallback (`fallbacks: "default"`); refusals and max-token stops are checked before reading content; 429/5xx retried twice, honouring `retry-after`; system prompt cached |
-| mlx | added by the app from `KBAIMLX` when configured | |
+| mlx | `KBAIMLX.MLXLanguageProvider`: opt-in (Settings → AI), Qwen3 4B, Gemma 4 E4B or Qwen3 8B (default) 4-bit via `mlx-swift-lm`; available only when on **and** downloaded, so a request never starts a download; JSON by prompt hint + extraction (no guided generation); Qwen3 runs with `/no_think` and any `<think>` block is stripped | `granite-ml generate --model mlx-community/Qwen3-0.6B-4bit --json …`: JSON decoded, 2.5 s after a one-time load |
 
 The API key lives in the login Keychain (Settings → AI); `ANTHROPIC_API_KEY` in the environment overrides it for development.
 
@@ -32,4 +32,6 @@ The API key lives in the login Keychain (Settings → AI); `ANTHROPIC_API_KEY` i
 ## Done when
 - [x] Tests: routing table, label limits, taint, `none`, budget alert and hard stop, synthesis cloud-only, pricing, schema translation, JSON extraction, fallback order and audit rows, refusal stops fallback, cool-down, Claude request shape (headers, documents, citations, effort, fallbacks, structured output), refusal/truncation/retry/auth errors, real on-device structured output.
 - [x] Settings → AI: key entry, available routes, monthly spend vs budget, what left this Mac this week.
+- [x] MLX route smoke test (`granite-ml generate`, small Qwen3).
 - [ ] With your Claude key: one real Haiku call from the app (you).
+- [ ] Optional: turn on the local model in Settings and download it (2.3–4.6 GB) if private notes need more than the on-device model.

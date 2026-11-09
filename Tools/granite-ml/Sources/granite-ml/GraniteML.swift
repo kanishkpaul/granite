@@ -10,7 +10,7 @@ struct GraniteML: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "granite-ml",
         abstract: "Local embeddings, hybrid search and retrieval benchmarks (MLX).",
-        subcommands: [Embed.self, Search.self, Bench.self, Ask.self]
+        subcommands: [Embed.self, Search.self, Bench.self, Ask.self, Generate.self]
     )
 }
 
@@ -163,13 +163,20 @@ struct Ask: AsyncParsableCommand {
     @OptionGroup var options: IndexOptions
     @Argument var question: [String]
     @Option(help: "Your own view first (Socratic mode).") var view: String?
+    @Option(help: "Also offer the local MLX route with this model (Hugging Face id; downloaded once).") var mlx: String?
 
     func run() async throws {
         let database = try IndexDatabase(url: options.databaseURL)
         let (embedder, reranker) = try await loadModels(reranker: true)
         let searcher = HybridSearcher(database: database, vectors: VectorIndex(database: database), embedder: embedder,
                                       reranker: reranker)
-        let models = ModelService(providers: ModelService.standardProviders(), state: nil)
+        var providers = ModelService.standardProviders()
+        if let mlx {
+            let provider = MLXLanguageProvider(modelID: mlx)
+            try await provider.load()
+            providers.append(provider)
+        }
+        let models = ModelService(providers: providers, state: nil)
         let qa = GroundedQA(models: models, retrieve: GroundedQA.retrieval(searcher))
         let clock = ContinuousClock()
         let start = clock.now
@@ -186,5 +193,30 @@ struct Ask: AsyncParsableCommand {
         print(String(format: "route %@ · label %@ · %d/%d verified · %.0f ms%@", answer.route?.rawValue ?? "none",
                      answer.label.rawValue, answer.verifiedCount, answer.sentences.count, ms,
                      answer.notice.map { " · " + $0 } ?? ""))
+    }
+}
+
+
+struct Generate: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Smoke-test the local MLX language model route.")
+    @Option(help: "Hugging Face model id.") var model = MLXLanguageProvider.defaultModel
+    @Flag(help: "Ask for JSON {\"answer\": string} and decode it.") var json = false
+    @Argument var prompt: [String]
+
+    func run() async throws {
+        let provider = MLXLanguageProvider(modelID: model)
+        let clock = ContinuousClock()
+        var start = clock.now
+        try await provider.load { progress in
+            FileHandle.standardError.write(Data("\rdownloading \(Int(progress.fractionCompleted * 100))%".utf8))
+        }
+        print(String(format: "loaded %@ in %.1f s", model, elapsedMs(clock.now - start) / 1000))
+        start = clock.now
+        let schema: OutputSchema? = json ? .object(name: "Reply", fields: [.init("answer", .string("one sentence"))]) : nil
+        let generation = try await provider.generate(GenerationRequest(system: "You are concise.", prompt: prompt.joined(separator: " "),
+                                                                       schema: schema, maxTokens: 200))
+        print(generation.text)
+        if json { print("decoded:", (try? generation.decode([String: String].self))?["answer"] ?? "✗ not JSON") }
+        print(String(format: "%.1f s", elapsedMs(clock.now - start) / 1000))
     }
 }

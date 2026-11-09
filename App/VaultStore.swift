@@ -45,6 +45,7 @@ final class VaultStore {
     private(set) var models: ModelService?
     /// Local embeddings, background embedding, hybrid search.
     let semantic = SemanticEngine()
+    let localModel = LocalModel()
     private var lastSearch: (id: Int64, at: Date, paths: [String])?
     private(set) var policy = VaultPolicy.builtIn
     var budget: Budget { policy.budget ?? .standard }
@@ -109,7 +110,7 @@ final class VaultStore {
             self.policy = policy
             let state = try StateDatabase(url: vault.supportDirectory.appending(path: "state.sqlite"))
             self.state = state
-            models = ModelService(providers: ModelService.standardProviders(), state: state,
+            models = ModelService(providers: ModelService.standardProviders() + [localModel.provider], state: state,
                                   budget: policy.budget ?? .standard)
             let database = try IndexDatabase(url: vault.supportDirectory.appending(path: "index.sqlite"))
             let indexer = Indexer(database: database, vault: vault, policy: policy)

@@ -1,6 +1,7 @@
 import KBAI
 import KBIndex
 import KeyboardShortcuts
+import KBAIMLX
 import SwiftUI
 
 struct MenuBarContent: View {
@@ -85,6 +86,7 @@ struct AISettingsSection: View {
             Toggle("Semantic search (local; downloads ~0.4 GB once)", isOn: Binding(
                 get: { store.semantic.isEnabled }, set: { store.semantic.isEnabled = $0 }))
             Toggle("Show related notes while writing", isOn: $relatedOn)
+            LocalModelSettings(local: store.localModel) { provider in Task { await store.models?.add(provider) } }
             if hasKey {
                 LabeledContent("Claude API key") {
                     HStack {
@@ -142,5 +144,35 @@ struct AISettingsSection: View {
         routes = await models.availability(refresh: true)
         spend = await models.spendThisMonth()
         egress = (try? store.state?.egress(since: Date().addingTimeInterval(-7 * 86_400))) ?? []
+    }
+}
+
+
+/// Settings → AI → local language model (the MLX route): off by default, multi-GB download.
+struct LocalModelSettings: View {
+    @Bindable var local: LocalModel
+    let providerChanged: (MLXLanguageProvider) -> Void
+    @State private var enabled = UserDefaults.standard.bool(forKey: LocalModel.enabledKey)
+
+    var body: some View {
+        Toggle("Local language model (MLX) for private notes and overnight jobs", isOn: $enabled)
+            .onChange(of: enabled) { _, on in local.isEnabled = on }
+        if enabled {
+            Picker("Model", selection: Binding(get: { local.modelID }, set: {
+                local.modelID = $0
+                providerChanged(local.provider)
+            })) {
+                ForEach(MLXLanguageProvider.choices, id: \.id) { choice in Text(choice.label).tag(choice.id) }
+            }
+            LabeledContent("Weights") {
+                if let status = local.status {
+                    Text(status).foregroundStyle(.secondary)
+                } else if local.isDownloaded {
+                    Text("Downloaded").foregroundStyle(.secondary)
+                } else {
+                    Button("Download") { local.downloadAndLoad() }
+                }
+            }
+        }
     }
 }
