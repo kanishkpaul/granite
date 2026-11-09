@@ -5,7 +5,7 @@ import Foundation
 // is decoded and re-encoded by both sides (Vitest and EditorBridgeTests).
 
 enum EditorBridge {
-    static let protocolVersion = 2
+    static let protocolVersion = 3
     /// Name of the `WKScriptMessageHandler` the editor posts to.
     static let handlerName = "granite"
 }
@@ -31,6 +31,16 @@ struct EmbedContent: Codable, Sendable, Equatable {
     var dataURL: String?
 }
 
+/// A related note shown as a ghost link at the end of the paragraph being written.
+struct RelatedItem: Codable, Sendable, Equatable {
+    enum Reason: String, Codable, Sendable { case mention, similar }
+    var target: String
+    var title: String
+    var reason: Reason
+    var mention: String?
+    var detail: String?
+}
+
 /// Host → editor.
 enum HostMessage: Codable, Sendable, Equatable {
     case load(path: String, text: String, version: Int, cursor: Int?)
@@ -40,6 +50,7 @@ enum HostMessage: Codable, Sendable, Equatable {
     case completions(id: Int, items: [CompletionItem])
     case embed(EmbedContent)
     case external(path: String, text: String)
+    case related(id: Int, items: [RelatedItem])
 
     private enum CodingKeys: String, CodingKey {
         case type, path, text, version, cursor, targets, name, lines, keystrokes, scrollMs, id, items
@@ -70,6 +81,9 @@ enum HostMessage: Codable, Sendable, Equatable {
         case "external":
             self = .external(path: try container.decode(String.self, forKey: .path),
                              text: try container.decode(String.self, forKey: .text))
+        case "related":
+            self = .related(id: try container.decode(Int.self, forKey: .id),
+                            items: try container.decode([RelatedItem].self, forKey: .items))
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "unknown host message \(type)")
         }
@@ -106,6 +120,10 @@ enum HostMessage: Codable, Sendable, Equatable {
             try container.encode("external", forKey: .type)
             try container.encode(path, forKey: .path)
             try container.encode(text, forKey: .text)
+        case .related(let id, let items):
+            try container.encode("related", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(items, forKey: .items)
         }
     }
 
@@ -137,10 +155,13 @@ enum EditorMessage: Codable, Sendable, Equatable {
     case log(level: String, message: String)
     case complete(id: Int, kind: String, query: String)
     case resolveEmbed(id: Int, target: String)
+    case context(id: Int, text: String, line: Int)
+    /// "accepted" or "dismissed".
+    case relatedDecision(target: String, decision: String)
 
     private enum CodingKeys: String, CodingKey {
         case type, `protocol`, version, ms, text, anchor, head, line, target, heading, blockID, newPane, result, level,
-             message, id, kind, query
+             message, id, kind, query, decision
     }
 
     init(from decoder: any Decoder) throws {
@@ -179,6 +200,16 @@ enum EditorMessage: Codable, Sendable, Equatable {
         case "resolveEmbed":
             self = .resolveEmbed(id: try container.decode(Int.self, forKey: .id),
                                  target: try container.decode(String.self, forKey: .target))
+        case "context":
+            self = .context(id: try container.decode(Int.self, forKey: .id),
+                            text: try container.decode(String.self, forKey: .text),
+                            line: try container.decode(Int.self, forKey: .line))
+        case "relatedDecision":
+            let decision = try container.decode(String.self, forKey: .decision)
+            guard decision == "accepted" || decision == "dismissed" else {
+                throw DecodingError.dataCorruptedError(forKey: .decision, in: container, debugDescription: "unknown decision")
+            }
+            self = .relatedDecision(target: try container.decode(String.self, forKey: .target), decision: decision)
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "unknown editor message \(type)")
         }
@@ -225,6 +256,15 @@ enum EditorMessage: Codable, Sendable, Equatable {
             try container.encode("resolveEmbed", forKey: .type)
             try container.encode(id, forKey: .id)
             try container.encode(target, forKey: .target)
+        case .context(let id, let text, let line):
+            try container.encode("context", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(text, forKey: .text)
+            try container.encode(line, forKey: .line)
+        case .relatedDecision(let target, let decision):
+            try container.encode("relatedDecision", forKey: .type)
+            try container.encode(target, forKey: .target)
+            try container.encode(decision, forKey: .decision)
         }
     }
 

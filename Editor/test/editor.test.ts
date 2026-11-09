@@ -13,7 +13,7 @@ function make() {
 describe("editor host contract", () => {
   it("announces readiness with the protocol version", () => {
     const { sent } = make();
-    expect(sent[0]).toEqual({ type: "ready", protocol: 2 });
+    expect(sent[0]).toEqual({ type: "ready", protocol: 3 });
   });
 
   it("loads text without reporting it as a change, then debounces real edits", async () => {

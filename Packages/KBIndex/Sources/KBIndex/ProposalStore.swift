@@ -35,9 +35,9 @@ public actor ProposalStore {
     /// At most this many open proposals; feature jobs stop proposing when it is reached.
     public static let cap = 25
     /// A feature pauses when under this share of its proposals is accepted (over `pauseWindow`, at least `pauseMinimum` shown).
-    public static let pauseBelow = 0.10
-    public static let pauseWindow: TimeInterval = 28 * 86_400
-    public static let pauseMinimum = 20
+    public static let pauseBelow = FeatureGuard.pauseBelow
+    public static let pauseWindow = FeatureGuard.window
+    public static let pauseMinimum = FeatureGuard.minimumShown
 
     public let indexer: Indexer
     let writer: SafeWriter
@@ -82,10 +82,7 @@ public actor ProposalStore {
 
     /// Paused when the last four weeks show at least 20 proposals and under 10% accepted or edited.
     public func isPaused(feature: String, now: Date = Date()) throws -> Bool {
-        guard let state else { return false }
-        let (rate, shown) = try state.acceptance(feature: feature, since: now.addingTimeInterval(-Self.pauseWindow))
-        guard let rate, shown >= Self.pauseMinimum else { return false }
-        return rate < Self.pauseBelow
+        try state?.isPaused(feature: feature, now: now) ?? false
     }
 
     // MARK: Writing

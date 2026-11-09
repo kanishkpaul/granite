@@ -78,11 +78,13 @@ struct AISettingsSection: View {
     @State private var spend = 0.0
     @State private var egress: [EgressSummary] = []
     @State private var message: String?
+    @AppStorage(VaultStore.relatedEnabledKey) private var relatedOn = true
 
     var body: some View {
         Section("AI") {
             Toggle("Semantic search (local; downloads ~0.4 GB once)", isOn: Binding(
                 get: { store.semantic.isEnabled }, set: { store.semantic.isEnabled = $0 }))
+            Toggle("Show related notes while writing", isOn: $relatedOn)
             if hasKey {
                 LabeledContent("Claude API key") {
                     HStack {

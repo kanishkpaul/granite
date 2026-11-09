@@ -1,9 +1,9 @@
 # Spec: Editor (CodeMirror 6 in WKWebView)
 
-Status: **phase 1 item 4 built** (protocol v2); spike A manual checks pending (decision 0003). Plan refs: §3 stack risks, §4.7 editor bridge, §8 spike A.
+Status: **phase 1 item 4 built** (protocol v3 adds inline related items, `related.md`); spike A manual checks pending (decision 0003). Plan refs: §3 stack risks, §4.7 editor bridge, §8 spike A.
 
 ## Inputs
-- Host messages (`Editor/src/bridge.ts` ⇄ `App/Bridges/EditorBridge.swift`, protocol v2): `load {path, text, version, cursor?}`, `setResolved {targets}`, `command {undo|redo|focus|selectAll}`, `bench {…}`, `completions {id, items}`, `embed {id, target, kind, title?, text?, dataURL?}`, `external {path, text}`.
+- Host messages (`Editor/src/bridge.ts` ⇄ `App/Bridges/EditorBridge.swift`, protocol v3): `load {path, text, version, cursor?}`, `setResolved {targets}`, `command {undo|redo|focus|selectAll}`, `bench {…}`, `completions {id, items}`, `embed {id, target, kind, title?, text?, dataURL?}`, `external {path, text}`, `related {id, items}`; editor messages add `context {id, text, line}` and `relatedDecision {target, decision}`.
 
 ## Outputs
 - Editor messages: `ready {protocol}`, `loaded {version, ms}`, `changed {version, text}` (debounced 250 ms; flushed before a new load), `selection {anchor, head, line}`, `openLink {target, heading?, blockID?, newPane}` (⌘-click; ⌘⌥ for a new pane), `benchResult`, `log`, `complete {id, kind: link|tag, query}`, `resolveEmbed {id, target}`. Requests the host doesn't answer within 1.5 s resolve to an empty result.

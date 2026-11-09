@@ -27,7 +27,8 @@ describe("bridge protocol", () => {
   it("has an editor fixture for every editor message type", () => {
     const types = new Set(fixtures.editor.map((m) => (m as { type: string }).type));
     expect([...types].sort()).toEqual([
-      "benchResult", "changed", "complete", "loaded", "log", "openLink", "ready", "resolveEmbed", "selection",
+      "benchResult", "changed", "complete", "context", "loaded", "log", "openLink", "ready", "relatedDecision",
+      "resolveEmbed", "selection",
     ]);
   });
 });

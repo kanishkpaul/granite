@@ -23,6 +23,8 @@ final class VaultStore {
     var openProposals: [Proposal] = []
     var pausedFeatures: [String] = []
     var proposalTask: Task<Void, Never>?
+    /// Inline related items while writing: see Related.swift.
+    var related = RelatedSession()
     private var searchTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
     private var loadedVersion = 0
@@ -296,6 +298,10 @@ final class VaultStore {
             editor.send(.completions(id: id, items: completions(kind: kind, query: query)))
         case .resolveEmbed(let id, let target):
             editor.send(.embed(embedContent(id: id, target: target)))
+        case .context(let id, let text, _):
+            relatedItems(id: id, paragraph: text)
+        case .relatedDecision(let target, let decision):
+            relatedDecided(target: target, accepted: decision == "accepted")
         case .openLink(let target, _, _, _):
             guard let from = openPath, let database else { return }
             if let path = try? database.resolve(linkTarget: target, from: from) {

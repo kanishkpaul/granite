@@ -5,11 +5,12 @@ import { bracketMatching, forceParsing, indentOnInput } from "@codemirror/langua
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Annotation, EditorSelection, EditorState, type Extension, StateEffect, StateField } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, type Panel, rectangularSelection, showPanel } from "@codemirror/view";
-import { type BenchResult, type CompletionItem, type EditorMessage, type HostMessage, parseHostMessage, post, PROTOCOL_VERSION } from "./bridge";
+import { type BenchResult, type CompletionItem, type EditorMessage, type HostMessage, parseHostMessage, post, PROTOCOL_VERSION, type RelatedItem } from "./bridge";
 import { graniteCompletion } from "./completion";
 import { frontmatterFold, frontmatterRange } from "./frontmatter";
 import { HostRequests } from "./hostRequests";
 import { type EmbedContent, embedResolver, livePreview, resolvedTargets, setResolvedEffect } from "./livePreview";
+import { acceptChange, MAX_ITEMS, MIN_WORDS, paragraphAt, relatedActions, relatedField, removeRelatedItem, setRelated, wordCount } from "./related";
 import { theme } from "./theme";
 import { obsidianSyntax, parseTarget } from "./wikilink";
 
@@ -49,6 +50,8 @@ export interface GraniteEditorOptions {
   changeDelay?: number;
   /** How long to wait for host answers (completions, embeds), in ms. */
   requestTimeout?: number;
+  /** Pause in typing or moving before the paragraph is sent for related notes, in ms. */
+  contextDelay?: number;
 }
 
 export class GraniteEditor {
@@ -62,10 +65,19 @@ export class GraniteEditor {
   private loading = false;
   private readonly requests: HostRequests;
   private embedCache = new Map<string, Promise<EmbedContent>>();
+  private contextTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly contextDelay: number;
+  private contextID = 0;
+  private lastContext = "";
 
   constructor(options: GraniteEditorOptions) {
     this.fallback = options.fallback;
     this.changeDelay = options.changeDelay ?? 250;
+    this.contextDelay = options.contextDelay ?? 1200;
+    relatedActions.current = {
+      accept: (item) => this.acceptRelated(item),
+      dismiss: (item) => this.dismissRelated(item),
+    };
     this.requests = new HostRequests((message) => this.send(message), options.requestTimeout ?? 1500);
     this.view = new EditorView({ parent: options.parent, state: this.makeState("") });
     this.send({ type: "ready", protocol: PROTOCOL_VERSION });
@@ -109,6 +121,7 @@ export class GraniteEditor {
       embedResolver.of((target) => this.resolveEmbed(target)),
       graniteCompletion((kind, query) => this.complete(kind, query)),
       externalBanner,
+      relatedField,
       showPanel.from(externalBanner, (text) => (text === null ? null : (view) => this.bannerPanel(view))),
       theme,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
@@ -120,6 +133,7 @@ export class GraniteEditor {
           this.scheduleChanged();
         }
         if (update.selectionSet) this.scheduleSelection();
+        if (update.docChanged || update.selectionSet) this.scheduleContext();
       }),
       EditorView.domEventHandlers({
         mousedown: (event, view) => this.handleLinkClick(event, view),
@@ -172,7 +186,54 @@ export class GraniteEditor {
       case "external":
         this.external(message.path, message.text);
         break;
+      case "related":
+        this.showRelated(message.id, message.items);
+        break;
     }
+  }
+
+  // MARK: Inline related items
+
+  private scheduleContext(): void {
+    clearTimeout(this.contextTimer);
+    this.contextTimer = setTimeout(() => this.sendContext(), this.contextDelay);
+  }
+
+  /** Sends the paragraph at the cursor when it changed and says enough; clears stale ghost links. */
+  sendContext(): void {
+    this.contextTimer = undefined;
+    const state = this.view.state;
+    const head = state.selection.main.head;
+    const paragraph = paragraphAt(state, head);
+    const shown = state.field(relatedField, false);
+    if (shown && (!paragraph || shown.at < paragraph.from || shown.at > paragraph.to)) {
+      this.view.dispatch({ effects: setRelated.of(null) });
+    }
+    if (!paragraph || wordCount(paragraph.text) < MIN_WORDS || paragraph.text === this.lastContext) return;
+    this.lastContext = paragraph.text;
+    this.contextID += 1;
+    this.send({ type: "context", id: this.contextID, text: paragraph.text, line: state.doc.lineAt(head).number });
+  }
+
+  private showRelated(id: number, items: RelatedItem[]): void {
+    if (id !== this.contextID) return;
+    const paragraph = paragraphAt(this.view.state, this.view.state.selection.main.head);
+    if (!paragraph) return;
+    this.view.dispatch({ effects: setRelated.of({ at: paragraph.to, items: items.slice(0, MAX_ITEMS) }) });
+  }
+
+  private acceptRelated(item: RelatedItem): void {
+    const shown = this.view.state.field(relatedField, false);
+    if (!shown) return;
+    const paragraph = paragraphAt(this.view.state, Math.max(0, shown.at - 1));
+    const change = paragraph ? acceptChange(this.view.state, paragraph, item) : null;
+    this.view.dispatch({ changes: change ?? [], effects: removeRelatedItem.of(item.target), userEvent: "input.related" });
+    this.send({ type: "relatedDecision", target: item.target, decision: "accepted" });
+  }
+
+  private dismissRelated(item: RelatedItem): void {
+    this.view.dispatch({ effects: removeRelatedItem.of(item.target) });
+    this.send({ type: "relatedDecision", target: item.target, decision: "dismissed" });
   }
 
   /** The open note changed on disk. Unsaved local edits get a choice; otherwise apply quietly. */
@@ -225,6 +286,8 @@ export class GraniteEditor {
     this.loading = true;
     const resolved = this.view.state.field(resolvedTargets, false) ?? null;
     this.embedCache.clear();
+    this.lastContext = "";
+    clearTimeout(this.contextTimer);
     this.view.setState(this.makeState(text, cursor ?? 0));
     // Opening at the top: start in the body so the frontmatter stays folded.
     if (!cursor) {

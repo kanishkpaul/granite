@@ -198,6 +198,22 @@ extension StateDatabase {
     }
 }
 
+/// When an AI feature stops itself (master plan §6.4, §7): at least `minimumShown` suggestions in
+/// `window`, and under `pauseBelow` of them accepted or edited.
+public enum FeatureGuard {
+    public static let pauseBelow = 0.10
+    public static let window: TimeInterval = 28 * 86_400
+    public static let minimumShown = 20
+}
+
+extension StateDatabase {
+    public func isPaused(feature: String, now: Date = Date()) throws -> Bool {
+        let (rate, shown) = try acceptance(feature: feature, since: now.addingTimeInterval(-FeatureGuard.window))
+        guard let rate, shown >= FeatureGuard.minimumShown else { return false }
+        return rate < FeatureGuard.pauseBelow
+    }
+}
+
 // MARK: Search and Q&A logs, metrics
 
 extension StateDatabase {

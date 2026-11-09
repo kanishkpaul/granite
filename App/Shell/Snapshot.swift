@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import WebKit
 
-/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all]` renders the main window
+/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all] [--related-line N]` renders the main window
 /// (and the editor's web view, which draws out of process) to PNGs, then quits. Lets agents check
 /// layout without screen-recording permission.
 @MainActor
@@ -14,6 +14,7 @@ enum SnapshotMode {
         let open = arguments.firstIndex(of: "--open").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let ask = arguments.firstIndex(of: "--ask").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let suggest = arguments.contains("--suggest")
+        let contextLine = arguments.firstIndex(of: "--related-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
         let select = arguments.firstIndex(of: "--select").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         Task {
             let store = AppModel.shared.store
@@ -21,6 +22,17 @@ enum SnapshotMode {
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
             if suggest { await store.suggestLinks() }
+            if let contextLine {
+                // Put the cursor at the end of that line and ask for related notes right away.
+                try? await Task.sleep(for: .seconds(2))
+                _ = try? await store.editor.webView.callAsyncJavaScript("""
+                    const view = window.granite.view;
+                    const line = view.state.doc.line(Math.min(n, view.state.doc.lines));
+                    view.dispatch({ selection: { anchor: line.to } });
+                    window.granite.sendContext();
+                    """, arguments: ["n": contextLine], in: nil, contentWorld: .page)
+                try? await Task.sleep(for: .seconds(4))
+            }
             if select == "proposals" { store.selection = .proposals }
             if select == "all" { store.selection = .all }
             if select != nil { try? await Task.sleep(for: .seconds(3)) }

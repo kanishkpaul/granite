@@ -82,5 +82,12 @@ export const theme = EditorView.theme({
     fontSize: "0.9em",
   },
   ".cm-external-banner button": { cursor: "pointer" },
+  ".cm-related": { marginLeft: "10px", fontSize: "12px", userSelect: "none" },
+  ".cm-related-item": { display: "inline-flex", alignItems: "center", marginRight: "6px", opacity: "0.55", whiteSpace: "nowrap" },
+  ".cm-related-item:hover": { opacity: "1" },
+  ".cm-related button": {
+    font: "inherit", border: "none", background: "transparent", padding: "0 2px", cursor: "pointer", color: "var(--accent)",
+  },
+  ".cm-related .cm-related-dismiss": { color: "var(--muted)" },
   ".cm-tooltip-autocomplete": { fontSize: "0.92em" },
 });
