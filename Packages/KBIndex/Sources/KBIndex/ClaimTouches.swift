@@ -54,3 +54,53 @@ public enum ClaimTouches {
         }
     }
 }
+
+/// Two held claims about the same thing (master plan §7, contradiction detection): candidates
+/// for a contradiction check, by vector similarity.
+public struct ClaimPair: Sendable, Hashable {
+    public let first: String
+    public let firstTitle: String
+    public let firstText: String
+    public let second: String
+    public let secondTitle: String
+    public let secondText: String
+    public let similarity: Double
+}
+
+public enum ClaimPairs {
+    /// Held-claim pairs above `threshold`, most similar first. Pairs already linked with
+    /// `contradicts` or `supersedes` are skipped (you've recorded the relation).
+    public static func similar(in database: IndexDatabase, threshold: Double = 0.7, limit: Int = 10) throws -> [ClaimPair] {
+        try database.pool.read { db in
+            struct Claim { let rowid: Int64; let path, title, text: String; let vector: [Float] }
+            var claims: [Int64: Claim] = [:]
+            for row in try Row.fetchAll(db, sql: """
+                SELECT o.rowid, o.path, o.title, c.text, v.vector FROM chunk_vectors v JOIN chunks c ON c.id = v.chunk
+                JOIN objects o ON o.rowid = c.obj WHERE o.type = 'claim' AND o.status = 'held' ORDER BY c.id
+                """) {
+                let rowid: Int64 = row["rowid"]
+                guard claims[rowid] == nil else { continue }  // first chunk: claims are short
+                claims[rowid] = Claim(rowid: rowid, path: row["path"], title: row["title"], text: row["text"],
+                                      vector: VectorMath.normalized(VectorMath.vector(row["vector"])))
+            }
+            var related = Set<String>()
+            for row in try Row.fetchAll(db, sql: "SELECT src, dst FROM links WHERE rel IN ('contradicts', 'supersedes', 'supports') AND dst IS NOT NULL") {
+                let a: Int64 = row["src"], b: Int64 = row["dst"]
+                related.insert("\(min(a, b))-\(max(a, b))")
+            }
+            let list = claims.values.sorted { $0.path < $1.path }
+            var pairs: [ClaimPair] = []
+            for i in list.indices {
+                for j in list.indices where j > i && list[i].vector.count == list[j].vector.count {
+                    let a = list[i], b = list[j]
+                    guard !related.contains("\(min(a.rowid, b.rowid))-\(max(a.rowid, b.rowid))") else { continue }
+                    let similarity = Double(zip(a.vector, b.vector).reduce(Float(0)) { $0 + $1.0 * $1.1 })
+                    guard similarity >= threshold else { continue }
+                    pairs.append(ClaimPair(first: a.path, firstTitle: a.title, firstText: a.text, second: b.path, secondTitle: b.title,
+                                           secondText: b.text, similarity: similarity))
+                }
+            }
+            return Array(pairs.sorted { $0.similarity > $1.similarity }.prefix(limit))
+        }
+    }
+}

@@ -52,3 +52,39 @@ import Testing
         #expect(text.contains("[[Notes/Retrieval|Retrieval]]: Hybrid search plus reranking wins."))
     }
 }
+
+@Suite struct BeliefTests {
+    @Test func beliefDiffListsAndNarrates() async throws {
+        let base = FileManager.default.temporaryDirectory.appending(path: "granite-beliefs-\(UUID().uuidString)")
+        let root = base.appending(path: "vault")
+        let day = ProposalStore.day(Date(), .current)
+        for (path, text) in [
+            "Notes/Old view.md": "---\ntype: claim\nstatus: superseded\ncreated: 2025-01-01\nas_of: \(day)\n---\nEmbeddings matter most.\n",
+            "Notes/New view.md": "---\ntype: claim\nstatus: held\ncreated: \(day)\nas_of: \(day)\nsupersedes: [\"[[Old view]]\"]\n---\nRerankers matter most.\n",
+            "Notes/Steady.md": "---\ntype: claim\nstatus: held\ncreated: 2024-01-01\nas_of: 2024-01-01\n---\nWrite every day.\n",
+        ] {
+            let url = root.appending(path: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: url)
+        }
+        let indexer = Indexer(database: try IndexDatabase(url: base.appending(path: "index.sqlite")), vault: Vault(root: root), policy: .builtIn)
+        _ = try await indexer.reconcile()
+        let reply = #"{"sentences": [{"claims": ["k1", "k2"], "text": "You moved from embeddings to rerankers."}]}"#
+        let models = ModelService(providers: [FakeProvider(.onDevice, results: [.success(Generation(text: reply, inputTokens: 1, outputTokens: 1, model: "fake"))])],
+                                  state: nil)
+        let (path, text, model) = try await BeliefDiff(models: models, database: indexer.database).render(labels: { _ in .cloud })
+        #expect(path.hasPrefix("AI/Synthesis/Belief diff ") && model == "fake")
+        #expect(text.contains("1 new, 0 revised, 1 superseded, 0 retired; 1 held throughout."))
+        #expect(text.contains("- [[Notes/New view|New view]] (\(day)) ← replaced [[Notes/Old view|Old view]]"))
+        #expect(text.contains("You moved from embeddings to rerankers. [[Notes/"))
+        #expect(BeliefDiff.quarter(of: Date(timeIntervalSince1970: 1_794_214_925)).label == "2026-Q4")
+    }
+
+    @Test func nliVerdicts() async throws {
+        let reply = #"{"reason": "Both can't hold.", "relation": "Contradicts"}"#
+        let models = ModelService(providers: [FakeProvider(.onDevice, results: [.success(Generation(text: reply, inputTokens: 1, outputTokens: 1, model: "fake"))])],
+                                  state: nil)
+        let (relation, reason) = try await NLIChecker(models: models).check("A is true.", "A is false.", labels: [.local], paths: [])
+        #expect(relation == .contradicts && reason == "Both can't hold.")
+    }
+}

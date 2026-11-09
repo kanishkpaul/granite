@@ -51,6 +51,10 @@ enum SnapshotMode {
                 await store.expandLiteratureGraph()
                 NSLog("granite snapshot: %@", store.status)
             }
+            if arguments.contains("--belief-diff") {
+                await store.writeBeliefDiff(open: false)
+                NSLog("granite snapshot: %@", store.status)
+            }
             if arguments.contains("--trails") {
                 await store.suggestTrails()
                 NSLog("granite snapshot: %@", store.status)

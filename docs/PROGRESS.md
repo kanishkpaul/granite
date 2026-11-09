@@ -46,9 +46,9 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Code decisions: repo scan, ADR import, commit trailers, decision proposals | ✓ | `KBCode`, `App/Code`, spec `code-decisions.md` |
 | Literature-graph expansion (OpenAlex references and cited-by, ranked by your notes) | ✓ | `KBPapers.LiteratureGraph`, spec `literature-graph.md` |
 | Trails (`kind: trail`), candidate trails as proposals, walking | ✓ | `KBCore.Trail`, `KBIndex.TrailSuggester`, `App/Trails`, spec `trails.md` |
-| Contradiction detection between held claims | | |
-| "New source touches a held claim" alerts | | |
-| Quarterly belief diff | | |
+| Contradiction detection between held claims | ✓ | `KBAI.ContradictionFinder`, digest, spec `beliefs.md` |
+| "New source touches a held claim" alerts | ✓ | NLI-checked in the digest + notification, spec `beliefs.md` |
+| Quarterly belief diff | ✓ | `KBAI.BeliefDiff`, spec `beliefs.md` |
 | App Intents entities: Spotlight and Siri | | |
 | Web clipper (Defuddle in a hidden web view) | | |
 | Scoped LLM wiki under `AI/Wiki/<domain>/` | | |

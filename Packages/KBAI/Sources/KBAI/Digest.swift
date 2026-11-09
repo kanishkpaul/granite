@@ -38,6 +38,7 @@ public struct DigestJob: Sendable {
         public let summarizedBy: String?
         public let lintIssues: Int
         public let touches: Int
+        public var contradictions: Int = 0
     }
 
     public func run(since: Date, now: Date = Date()) async throws -> Result {
@@ -64,15 +65,49 @@ public struct DigestJob: Sendable {
             sections.append(contentsOf: questions.prefix(15).map { "- \($0.text) — \(Self.link($0.note))" })
         }
 
-        let touches = ((try? ClaimTouches.find(in: database, sourcesSince: since)) ?? []).filter { touch in
+        var touches = ((try? ClaimTouches.find(in: database, sourcesSince: since)) ?? []).filter { touch in
             ((try? labelsByPath([touch.claim])) ?? [:])[touch.claim] != AILabel.none
+        }
+        // An NLI check on each match (when a model allows it): unrelated ones drop out.
+        var verdicts: [String: (Entailment, String)] = [:]
+        if let models {
+            let checker = NLIChecker(models: models)
+            let labels = (try? labelsByPath(touches.flatMap { [$0.source, $0.claim] })) ?? [:]
+            for touch in touches.prefix(10) {
+                let claimText = (try? String(contentsOf: vault.url(for: touch.claim), encoding: .utf8))
+                    .map { MarkdownDocument(text: $0).bodyLines.map(\.text).joined(separator: "\n") } ?? touch.claimTitle
+                if let verdict = try? await checker.check(claimText, touch.passage,
+                                                          labels: [labels[touch.source] ?? .local, labels[touch.claim] ?? .local],
+                                                          paths: [touch.source, touch.claim]) {
+                    verdicts[touch.source + "|" + touch.claim] = verdict
+                }
+            }
+            touches = touches.filter { verdicts[$0.source + "|" + $0.claim]?.0 != .unrelated }
         }
         if !touches.isEmpty {
             sections.append("## New sources touching your claims")
             sections.append(contentsOf: touches.map { touch in
-                "- \(Self.link(touch.source, touch.sourceTitle))\(touch.headingPath.isEmpty ? "" : " (\(touch.headingPath))") → "
-                    + "\(Self.link(touch.claim, touch.claimTitle)) · \(String(format: "%.2f", touch.similarity)): reread before trusting it"
+                let verdict = verdicts[touch.source + "|" + touch.claim]
+                return "- \(Self.link(touch.source, touch.sourceTitle))\(touch.headingPath.isEmpty ? "" : " (\(touch.headingPath))") "
+                    + "\(verdict.map { $0.0.rawValue } ?? "→") \(Self.link(touch.claim, touch.claimTitle)) · "
+                    + (verdict.map { $0.1 } ?? String(format: "%.2f similar: reread before trusting it", touch.similarity))
             })
+        }
+
+        let contradictions = await ContradictionFinder.find(database: database, models: models, labels: { path in
+            ((try? labelsByPath([path])) ?? [:])[path] ?? .local
+        })
+        if !contradictions.isEmpty {
+            sections.append("## Claims that may contradict each other")
+            sections.append(contentsOf: contradictions.map { item in
+                "- \(Self.link(item.pair.first, item.pair.firstTitle)) ↔ \(Self.link(item.pair.second, item.pair.secondTitle)): "
+                    + (item.reason ?? String(format: "close (%.2f); no model checked them", item.pair.similarity))
+                    + ". If one is wrong, supersede it; if both hold, link them with `contradicts`."
+            })
+            for item in contradictions {
+                let labels = (try? labelsByPath([item.pair.first, item.pair.second])) ?? [:]
+                label = max(label, labels[item.pair.first] ?? .local, labels[item.pair.second] ?? .local)
+            }
         }
 
         // Notes labelled `none` never appear; everything listed raises the digest's label (taint).
@@ -101,7 +136,8 @@ public struct DigestJob: Sendable {
         let text = (frontmatter + ["# Digest \(day)", ""] + Self.layout(sections)).joined(separator: "\n")
         try await writer.write(text, to: path, as: .ai)
         _ = try await indexer.update(paths: [path])
-        return Result(path: path, changed: changed.count, summarizedBy: summaryModel, lintIssues: issues.count, touches: touches.count)
+        return Result(path: path, changed: changed.count, summarizedBy: summaryModel, lintIssues: issues.count, touches: touches.count,
+                      contradictions: contradictions.count)
     }
 
     /// Blank lines between headings and paragraphs, none inside a run of bullets.

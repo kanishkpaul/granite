@@ -71,3 +71,21 @@ import Testing
         #expect(try database.knownDOIs() == ["10.1/abc"])
     }
 }
+
+@Suite struct ClaimPairTests {
+    @Test func similarHeldClaimsNotYetRelated() async throws {
+        let temp = try TempVault()
+        try temp.put("Notes/Brakes good.md", "---\ntype: claim\nstatus: held\n---\nmy car brakes are fine\n")
+        try temp.put("Notes/Brakes bad.md", "---\ntype: claim\nstatus: held\n---\nmy car brakes are worn\n")
+        try temp.put("Notes/Linked.md", "---\ntype: claim\nstatus: held\nsupports: [\"[[Brakes good]]\"]\n---\nmy car brakes are good\n")
+        try temp.put("Notes/Bread.md", "---\ntype: claim\nstatus: held\n---\nsourdough needs time\n")
+        let (database, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        _ = try await EmbeddingJob(database: database, embedder: FakeEmbedder()).run()
+        let pairs = try ClaimPairs.similar(in: database, threshold: 0.5)
+        let names = pairs.map { [$0.first, $0.second].sorted() }
+        #expect(names.contains(["Notes/Brakes bad.md", "Notes/Brakes good.md"]))
+        #expect(!names.contains(["Notes/Brakes good.md", "Notes/Linked.md"]), "already related")
+        #expect(!names.contains { $0.contains("Notes/Bread.md") })
+    }
+}

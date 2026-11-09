@@ -1,6 +1,7 @@
 import Foundation
 import KBAI
 import KBCore
+import UserNotifications
 
 /// Nightly jobs at 3 a.m. while granite runs (it stays in the menu bar): the digest and lint,
 /// then link suggestions. A missed night is caught up once, a few minutes after launch.
@@ -53,10 +54,49 @@ extension VaultStore {
                 await freezeMetrics()
                 await scanRepos()
                 await suggestLinks()
+                // First night of a quarter: the belief diff for the quarter that just ended.
+                let yesterday = Date().addingTimeInterval(-86_400)
+                if BeliefDiff.quarter(of: yesterday).label != BeliefDiff.quarter(of: Date()).label {
+                    await writeBeliefDiff(asOf: yesterday, open: false)
+                }
+                if result.touches + result.contradictions > 0 {
+                    await notify(title: "granite digest",
+                                 body: [result.touches > 0 ? "\(result.touches) new source(s) touch your claims" : nil,
+                                        result.contradictions > 0 ? "\(result.contradictions) pair(s) of claims may conflict" : nil]
+                                     .compactMap { $0 }.joined(separator: " · "))
+                }
             }
         } catch {
             status = "Digest failed: \(error)"
         }
+    }
+
+    /// The quarter's belief diff (⌘K, or nightly at a quarter's end).
+    func writeBeliefDiff(asOf date: Date = Date(), open: Bool = true) async {
+        guard let database, let writer else { return }
+        let policy = self.policy
+        do {
+            let labels: @Sendable (String) -> AILabel = { path in
+                ((try? database.note(path: path)) ?? nil).flatMap { AILabel(rawValue: $0.aiLabel) } ?? policy.policy(for: path).ai
+            }
+            let (path, text, _) = try await BeliefDiff(models: models, database: database).render(now: date, labels: labels)
+            try await writer.write(text, to: path, as: .ai)
+            _ = try await indexer?.update(paths: [path])
+            if open { openNote(path) }
+            status = "Wrote \(path)"
+        } catch {
+            status = "Belief diff failed: \(error)"
+        }
+    }
+
+    /// A banner for things worth rereading; asks for permission the first time.
+    func notify(title: String, body: String) async {
+        let center = UNUserNotificationCenter.current()
+        guard (try? await center.requestAuthorization(options: [.alert])) == true else { return }
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        try? await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     /// The newest digest file, for ⌘K "Open latest digest".
