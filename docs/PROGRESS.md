@@ -37,7 +37,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Metrics dashboard + weekly `AI/Metrics/YYYY-Www.md` | ✓ | `KBIndex.VaultMetrics`, `App/Review/Metrics.swift`, spec `metrics.md` |
 | Enrichment: Crossref, OpenAlex, Semantic Scholar (on request) | ✓ | `KBPapers.ScholarlyClient`, spec `enrichment.md` |
 | Docling extraction for "study" papers (if installed) | ◐ built; Docling not installed here | `KBPapers.DoclingRunner`, spec `enrichment.md` |
-| MCP `propose_change`, `create_derived_note` | | |
+| MCP `propose_change`, `create_derived_note` (+ `get_claims`) | ✓ | `GraniteMCPKit/WriteTools.swift`, `KBIndex.ProposalFiles`, spec `granite-mcp.md` |
 | Budget enforcement (alert, hard stop for background jobs) | ✓ (in the router) | `KBAI.Router` |
 
 ## Phase 4: edge features

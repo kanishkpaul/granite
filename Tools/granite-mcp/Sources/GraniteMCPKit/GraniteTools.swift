@@ -12,16 +12,27 @@ public struct GraniteTools: Sendable {
     public let audit: AuditLog?
     /// BM25 + vectors (+ rerank) when the bundled helper loads local models; nil means BM25 only.
     public let hybrid: HybridSearcher?
+    /// Writes proposal files and AI notes; nil (or `allowWrites` false) makes the server read-only.
+    public let writer: SafeWriter?
+    public let allowWrites: Bool
 
     /// Upper bound on `get_note` output, so one call cannot flood the client's context.
     static let maxNoteCharacters = 200_000
 
-    public init(database: IndexDatabase, vault: Vault, policy: VaultPolicy, audit: AuditLog?, hybrid: HybridSearcher? = nil) {
+    public init(database: IndexDatabase, vault: Vault, policy: VaultPolicy, audit: AuditLog?, hybrid: HybridSearcher? = nil,
+                allowWrites: Bool = true) {
         self.database = database
         self.vault = vault
         self.policy = policy
         self.audit = audit
         self.hybrid = hybrid
+        self.allowWrites = allowWrites
+        self.writer = allowWrites ? SafeWriter(vault: vault) : nil
+    }
+
+    /// What `tools/list` offers: the read tools, plus the write tools unless read-only.
+    public var available: [Tool] {
+        Self.definitions + [Self.claimsDefinition] + (allowWrites ? Self.writeDefinitions : [])
     }
 
     // MARK: Definitions
@@ -116,6 +127,9 @@ public struct GraniteTools: Sendable {
         case "get_note": return try getNote(arguments)
         case "get_backlinks": return try backlinks(arguments)
         case "list_recent": return try recent(arguments)
+        case "get_claims": return try getClaims(arguments)
+        case "propose_change" where allowWrites: return try await proposeChange(arguments)
+        case "create_derived_note" where allowWrites: return try await createDerivedNote(arguments)
         default: throw ToolError(description: "unknown tool \(name)")
         }
     }

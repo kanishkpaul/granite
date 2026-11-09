@@ -23,6 +23,13 @@ All tools are annotated read-only. Phase 3 adds `propose_change` and `create_der
 - `get_note` serves only paths present in the index, so arbitrary files (`../`, `.git/`, absolute paths) are unreachable.
 - Search excludes `AI/` unless `include_ai` (evidence scope, principle 4). Untrusted clippings are labelled `trust: untrusted` in every result.
 
+## Write tools (phase 3)
+- `propose_change(target, kind, diff, rationale, citations?)`: writes one file in `AI/Proposals/` (feature `mcp`) and nothing else; the user accepts, edits or rejects it in the app. Kinds: link, edit, tag, prompt, rule, claim. The target must be a visible note outside `AI/` (a claim names a new path in a visible folder). An edit whose `-` lines don't match the note is refused at once, with the reason. Same cap (25 open) and duplicate rules as the app (`KBIndex.ProposalFiles`, which reads the files, so it works while the app is closed; the app's watcher indexes them).
+- `create_derived_note(path, body, sources)`: a new `.md` under `AI/` (not `AI/Proposals`, `AI/Digests`, `AI/Metrics` or `AI/log.md`), stamped `type: synthesis`, `origin: ai`, `ai: cloud`, with `sources` and `derived_from`. Never overwrites. Every source must be a note the client can see.
+- `get_claims(topic?, status?, limit?)` (read): the claim ledger, visible claims only.
+- `--read-only` (both builds) drops the two write tools; calls to them then fail.
+- `SafeWriter` enforces the AI role in code: these tools can't write outside `AI/` even with a bug in the handler.
+
 ## Audit
 Every call appends one JSON line to `~/Library/Application Support/granite/<vault-id>/mcp-audit.jsonl`: time, tool, result count, and the paths returned. Never note content or the query text. Moves into `state.sqlite` when that exists.
 
@@ -34,7 +41,7 @@ Every call appends one JSON line to `~/Library/Application Support/granite/<vaul
 `Tools/granite-mcp/Sources/GraniteMCPKit/` (handlers, visibility, audit), `Tools/granite-mcp/Sources/granite-mcp/main.swift`, tests in `Tools/granite-mcp/Tests/`. KBIndex gains a read-only open mode, `note(path:)`, `note(id:)`, `recent(limit:since:)`.
 
 ## Done when
-- [x] 10 tests over the in-memory MCP transport: tools listed, each tool works, hidden and non-cloud notes never appear, path escapes refused.
+- [x] 14 tests over the in-memory MCP transport: tools listed (and read-only mode), each tool works, hidden and non-cloud notes never appear, path escapes refused; proposals never change the note, duplicates and mismatched edits refused; derived notes only under AI/, never overwritten, sources must be visible.
 - [ ] Claude Code answers a question through the server, citing a fixture note path (blocked: CLI sign-in expired; command in decision 0004).
 - [x] Bundled in the app at `granite.app/Contents/MacOS/granite-mcp`, with hybrid search when the vault has vectors (`mode: hybrid|bm25`).
 - [ ] Registered in Claude Code / Claude Desktop from the bundle (you): `claude mcp add granite -- /Applications/granite.app/Contents/MacOS/granite-mcp --vault ~/Vault`.

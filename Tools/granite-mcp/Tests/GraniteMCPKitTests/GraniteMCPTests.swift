@@ -51,9 +51,9 @@ final class MCPVault: @unchecked Sendable {
     }
 
     /// Server and client connected in memory, the server opened exactly as the executable opens it.
-    func connect() async throws -> Client {
+    func connect(readOnly: Bool = false) async throws -> Client {
         let tools = try GraniteServer.tools(vaultPath: root.path(percentEncoded: false),
-                                            databasePath: dbURL.path(percentEncoded: false))
+                                            databasePath: dbURL.path(percentEncoded: false), readOnly: readOnly)
         let server = await GraniteServer.make(tools: tools)
         let (clientTransport, serverTransport) = await InMemoryTransport.createConnectedPair()
         try await server.start(transport: serverTransport)
@@ -76,11 +76,16 @@ func call(_ client: Client, _ name: String, _ arguments: [String: Value] = [:]) 
 }
 
 @Suite struct GraniteMCPTests {
-    @Test func listsReadOnlyTools() async throws {
+    @Test func listsToolsAndReadOnlyMode() async throws {
         let client = try await MCPVault().connect()
         let tools = try await client.listTools().tools
-        #expect(tools.map(\.name).sorted() == ["get_backlinks", "get_note", "list_recent", "search"])
-        #expect(tools.allSatisfy { $0.annotations.readOnlyHint == true })
+        #expect(tools.map(\.name).sorted() == ["create_derived_note", "get_backlinks", "get_claims", "get_note", "list_recent",
+                                               "propose_change", "search"])
+        let readOnly = try await MCPVault().connect(readOnly: true)
+        let readTools = try await readOnly.listTools().tools
+        #expect(readTools.map(\.name).sorted() == ["get_backlinks", "get_claims", "get_note", "list_recent", "search"])
+        #expect(readTools.allSatisfy { $0.annotations.readOnlyHint == true })
+        #expect(try await call(readOnly, "propose_change", ["target": "[[Linker]]", "kind": "link", "diff": "+ x", "rationale": "r"]).1)
     }
 
     @Test func searchShowsOnlyCloudAndHidesPrivate() async throws {
@@ -227,5 +232,71 @@ struct SynonymEmbedder: Embedder {
 
         let keywords = await tools.call("search", arguments: ["query": "automobile", "mode": "bm25"])
         #expect(text(keywords.content).hasPrefix("No matching notes"))
+    }
+}
+
+
+@Suite struct MCPWriteTests {
+    func read(_ vault: MCPVault, _ path: String) throws -> String {
+        try String(contentsOf: vault.root.appending(path: path), encoding: .utf8)
+    }
+
+    @Test func proposeChangeWritesOnlyAProposal() async throws {
+        let vault = try await MCPVault()
+        let client = try await vault.connect()
+        let before = try read(vault, "Notes/Linker.md")
+        let (output, isError) = try await call(client, "propose_change", [
+            "target": "[[Linker]]", "kind": "link", "diff": "+ - [[Hybrid retrieval]] — same topic",
+            "rationale": "Both discuss retrieval.", "citations": ["[[Hybrid retrieval#^c1]]"],
+        ])
+        #expect(!isError, "\(output)")
+        #expect(try read(vault, "Notes/Linker.md") == before, "the note itself never changes")
+        let path = try #require(output.components(separatedBy: "Proposed in ").last?.components(separatedBy: ". Nothing").first)
+        let proposal = try #require(Proposal.parse(try read(vault, path)))
+        #expect(proposal.feature == "mcp" && proposal.target == "[[Notes/Linker]]" && proposal.status == .open)
+
+        // Same change again: refused as a duplicate.
+        #expect(try await call(client, "propose_change", ["target": "[[Linker]]", "kind": "link",
+                                                          "diff": "+ - [[Hybrid retrieval]] — same topic", "rationale": "again"]).1)
+        // Hidden and private targets look missing; an edit that doesn't match the note is refused now.
+        for target in ["[[diary]]", "Private/diary.md", "[[Local only]]", "AI/Synthesis/summary.md"] {
+            #expect(try await call(client, "propose_change", ["target": .string(target), "kind": "link", "diff": "+ x", "rationale": "r"]).1)
+        }
+        let (mismatch, mismatchError) = try await call(client, "propose_change", [
+            "target": "Notes/Linker.md", "kind": "edit", "diff": "- text that is not there\n+ new", "rationale": "r"])
+        #expect(mismatchError && mismatch.contains("doesn't apply"))
+        // A claim proposal names a new path in a visible folder.
+        #expect(try await !call(client, "propose_change", ["target": "Notes/New claim.md", "kind": "claim",
+                                                           "diff": "+ ---\n+ type: claim\n+ ---\n+ Something.", "rationale": "r"]).1)
+        #expect(try await call(client, "propose_change", ["target": "Private/claim.md", "kind": "claim", "diff": "+ x", "rationale": "r"]).1)
+    }
+
+    @Test func derivedNotesStayInAIAndNeverOverwrite() async throws {
+        let vault = try await MCPVault()
+        let client = try await vault.connect()
+        let (output, isError) = try await call(client, "create_derived_note", [
+            "path": "AI/Synthesis/Retrieval overview.md", "body": "Hybrid wins [[Hybrid retrieval#^c1]].",
+            "sources": ["[[Hybrid retrieval#^c1]]"]])
+        #expect(!isError, "\(output)")
+        let text = try read(vault, "AI/Synthesis/Retrieval overview.md")
+        #expect(text.contains("origin: ai") && text.contains("type: synthesis") && text.contains("sources: [\"[[Hybrid retrieval#^c1]]\"]"))
+        for (path, sources) in [("AI/Synthesis/Retrieval overview.md", ["[[Hybrid retrieval]]"]),  // exists
+                                ("Notes/Sneaky.md", ["[[Hybrid retrieval]]"]),                       // outside AI/
+                                ("AI/Proposals/fake.md", ["[[Hybrid retrieval]]"]),                  // reserved
+                                ("AI/../Notes/x.md", ["[[Hybrid retrieval]]"]),                      // traversal
+                                ("AI/Synthesis/Leak.md", ["[[diary]]"])] {                           // invisible source
+            #expect(try await call(client, "create_derived_note", ["path": .string(path), "body": "x",
+                                                                   "sources": .array(sources.map { .string($0) })]).1, "\(path)")
+        }
+        #expect(!FileManager.default.fileExists(atPath: vault.root.appending(path: "Notes/Sneaky.md").path(percentEncoded: false)))
+    }
+
+    @Test func claimsAreFilteredAndVisibleOnly() async throws {
+        let vault = try await MCPVault()
+        let client = try await vault.connect()
+        let (output, _) = try await call(client, "get_claims", ["topic": "retrieval"])
+        #expect(output.contains("Hybrid retrieval | status: held"))
+        let (none, _) = try await call(client, "get_claims", ["status": "retired"])
+        #expect(none == "No matching claims.")
     }
 }

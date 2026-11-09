@@ -184,7 +184,7 @@ public actor ProposalStore {
         return target.trimmingCharacters(in: .whitespaces)
     }
 
-    static func sameTarget(_ a: String, _ b: String) -> Bool {
+    public static func sameTarget(_ a: String, _ b: String) -> Bool {
         LinkRef.key(for: linkTarget(a)) == LinkRef.key(for: linkTarget(b))
     }
 
@@ -199,12 +199,12 @@ public actor ProposalStore {
         try await writer.write(log, to: Self.logPath, as: .ai)
     }
 
-    static func day(_ date: Date, _ calendar: Calendar) -> String {
+    public static func day(_ date: Date, _ calendar: Calendar) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
-    static func stamp(_ date: Date, _ calendar: Calendar) -> String {
+    public static func stamp(_ date: Date, _ calendar: Calendar) -> String {
         let parts = calendar.dateComponents([.hour, .minute], from: date)
         return day(date, calendar) + String(format: " %02d%02d", parts.hour ?? 0, parts.minute ?? 0)
     }

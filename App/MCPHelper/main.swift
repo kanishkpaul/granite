@@ -4,7 +4,7 @@ import GraniteMCPKit
 import KBAIMLX
 import KBIndex
 
-// granite.app/Contents/MacOS/granite-mcp --vault <folder> [--db <index.sqlite>] [--no-semantic]
+// granite.app/Contents/MacOS/granite-mcp --vault <folder> [--db <index.sqlite>] [--no-semantic] [--read-only]
 // The bundled MCP server: like Tools/granite-mcp, plus hybrid search when the vault already has
 // vectors (so it never starts a model download on its own). stdout carries the protocol.
 
@@ -42,10 +42,10 @@ do {
         }
     }
     let loaded = embedder
-    let tools = try GraniteServer.tools(vaultPath: vaultPath, databasePath: databasePath) { database in
+    let tools = try GraniteServer.tools(vaultPath: vaultPath, databasePath: databasePath, hybrid: { database in
         guard let loaded else { return nil }
         return HybridSearcher(database: database, vectors: VectorIndex(database: database), embedder: loaded, reranker: nil)
-    }
+    }, readOnly: CommandLine.arguments.contains("--read-only"))
     FileHandle.standardError.write(Data("granite-mcp: \(loaded == nil ? "keyword" : "hybrid") search\n".utf8))
     try await GraniteServer.serveStdio(tools)
 } catch {
