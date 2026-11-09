@@ -113,6 +113,8 @@ struct FakeReranker: Reranker {
         #expect(fused.hits.first?.path == "Notes/Both.md")
         #expect(fused.hits.first?.bm25Rank != nil && fused.hits.first?.vectorRank != nil)
         #expect(fused.timings["total"] != nil && fused.timings["embed"] != nil)
+        let both = try #require(fused.hits.first)
+        #expect(both.startLine == 1 && both.endLine == 1 && both.aiLabel == "cloud")
 
         options.useReranker = true
         let reranked = try await searcher(database, reranker: FakeReranker()).search("brakes", options: options)

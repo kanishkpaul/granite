@@ -13,11 +13,13 @@ let package = Package(
         .package(path: "../../Packages/KBIndex"),
         .package(path: "../../Packages/KBTestSupport"),
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.1"),
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.12.0"),
     ],
     targets: [
         .target(
             name: "GraniteMCPKit",
-            dependencies: ["KBCore", "KBIndex", .product(name: "MCP", package: "swift-sdk")]
+            dependencies: ["KBCore", "KBIndex", .product(name: "MCP", package: "swift-sdk"),
+                           .product(name: "GRDB", package: "GRDB.swift")]
         ),
         .executableTarget(name: "granite-mcp", dependencies: ["GraniteMCPKit"]),
         .testTarget(name: "GraniteMCPKitTests", dependencies: ["GraniteMCPKit", "KBTestSupport"]),

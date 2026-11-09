@@ -30,4 +30,5 @@ Status: **built** (spike B part 2, decision 0007). Plan refs: §4.6, §6.1, §6.
 - [x] Real models: paraphrase queries recall 1.0 where BM25 finds nothing.
 - [x] Spike B gates measured (decision 0007).
 - [ ] Abstention threshold tuned on the personal re-find set (`.granite/eval/retrieval.jsonl`).
-- [ ] App and `granite-mcp` use hybrid search (phase 2; both need an xcodebuild-built MLX path).
+- [x] App: `SemanticEngine` loads EmbeddingGemma on demand (one ~0.4 GB download, Settings toggle), embeds pending chunks in the background after every change, and the search field uses hybrid search (no rerank, for speed) once vectors exist; searches and opened results are logged to `state.sqlite` for the re-find metric.
+- [x] `granite-mcp`: `search` gains `mode: hybrid|bm25`. The helper bundled at `granite.app/Contents/MacOS/granite-mcp` (XcodeGen tool target, built with MLX) loads the embedder only when the vault already has vectors from that model, so it never starts a download; library output is kept off stdout while models load. The SwiftPM build in `Tools/granite-mcp` stays keyword-only.

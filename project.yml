@@ -25,6 +25,10 @@ packages:
     path: Packages/KBGit
   KBAI:
     path: Packages/KBAI
+  KBAIMLX:
+    path: Packages/KBAIMLX
+  GraniteMCP:
+    path: Tools/granite-mcp
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 3.1.0
@@ -37,6 +41,7 @@ targets:
       - path: App
         excludes:
           - "Resources/editor/**"
+          - "MCPHelper/**"
       # Built by `pnpm build` in Editor/; copied as a folder so editor.html finds editor.js.
       - path: App/Resources/editor
         type: folder
@@ -47,7 +52,14 @@ targets:
       - package: KBCapture
       - package: KBGit
       - package: KBAI
+      - package: KBAIMLX
       - package: KeyboardShortcuts
+      # The bundled MCP server lands in Contents/MacOS next to the app binary.
+      - target: granite-mcp
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
     info:
       path: App/Info.plist
       properties:
@@ -67,6 +79,23 @@ targets:
         ENABLE_APP_SANDBOX: NO
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"
+
+  granite-mcp:
+    type: tool
+    platform: macOS
+    sources:
+      - path: App/MCPHelper
+    dependencies:
+      - package: GraniteMCP
+        product: GraniteMCPKit
+      - package: KBAIMLX
+      - package: KBIndex
+    settings:
+      base:
+        PRODUCT_NAME: granite-mcp
+        PRODUCT_BUNDLE_IDENTIFIER: local.granite.mcp
+        ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_IDENTITY: "-"
 
   graniteTests:
@@ -91,6 +120,7 @@ schemes:
     build:
       targets:
         granite: all
+        granite-mcp: all
         graniteTests: [test]
     test:
       targets:

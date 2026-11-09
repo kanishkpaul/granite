@@ -36,4 +36,5 @@ Every call appends one JSON line to `~/Library/Application Support/granite/<vaul
 ## Done when
 - [x] 10 tests over the in-memory MCP transport: tools listed, each tool works, hidden and non-cloud notes never appear, path escapes refused.
 - [ ] Claude Code answers a question through the server, citing a fixture note path (blocked: CLI sign-in expired; command in decision 0004).
-- [ ] Registered from the app bundle (`granite.app/Contents/MacOS/granite-mcp`) and launched by Claude Desktop.
+- [x] Bundled in the app at `granite.app/Contents/MacOS/granite-mcp`, with hybrid search when the vault has vectors (`mode: hybrid|bm25`).
+- [ ] Registered in Claude Code / Claude Desktop from the bundle (you): `claude mcp add granite -- /Applications/granite.app/Contents/MacOS/granite-mcp --vault ~/Vault`.

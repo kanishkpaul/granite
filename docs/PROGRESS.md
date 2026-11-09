@@ -20,7 +20,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 |---|---|---|
 | `state.sqlite`: audit log, search events, metric snapshots | ✓ | `KBIndex.StateDatabase` |
 | Model router: labels, taint, budget, routes (on-device, PCC, Claude, MLX) | ◐ built; Claude needs your key | `KBAI`, spec `model-router.md` |
-| Hybrid search (BM25 + vectors + rerank) in the app and `granite-mcp`; background embedding | | |
+| Hybrid search (BM25 + vectors + rerank) in the app and `granite-mcp`; background embedding | ✓ | `App/Semantic.swift`, `App/MCPHelper`, spec `hybrid-search.md` |
 | Re-find eval harness on `.granite/eval/retrieval.jsonl` | ◐ harness exists (`granite-ml bench`); you: write 20+ queries | |
 | Grounded Q&A with verifier, abstention, Socratic mode | | |
 | Inline related items (≤ 3 ghost links), acceptance tracking, auto-pause | | |

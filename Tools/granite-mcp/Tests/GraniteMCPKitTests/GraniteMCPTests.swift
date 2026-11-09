@@ -188,3 +188,44 @@ func call(_ client: Client, _ name: String, _ arguments: [String: Value] = [:]) 
         }
     }
 }
+
+/// Synonym-aware fake: "automobile" and "car" share a vector component.
+struct SynonymEmbedder: Embedder {
+    let modelID = "fake"
+    let dimension = 32
+    func vector(_ text: String) -> [Float] {
+        var vector = [Float](repeating: 0, count: dimension)
+        for raw in text.lowercased().split(whereSeparator: { !$0.isLetter }) {
+            let word = raw == "automobile" ? "car" : String(raw)
+            vector[abs(word.hashValue) % dimension] += 1
+        }
+        return vector
+    }
+    func embed(documents: [String]) async throws -> [[Float]] { documents.map(vector) }
+    func embed(query: String) async throws -> [Float] { vector(query) }
+}
+
+@Suite struct HybridMCPTests {
+    @Test func hybridModeFindsMeaningAndStillHidesPrivate() async throws {
+        let vault = try await MCPVault()
+        try Data("my car needs brakes\n".utf8).write(to: vault.root.appending(path: "Notes/Garage.md"))
+        try Data("private car secrets\n".utf8).write(to: vault.root.appending(path: "Private/car.md"))
+        let writable = try IndexDatabase(url: vault.dbURL)
+        _ = try await Indexer(database: writable, vault: Vault(root: vault.root), policy: .builtIn).update(paths: ["Notes/Garage.md", "Private/car.md"])
+        _ = try await EmbeddingJob(database: writable, embedder: SynonymEmbedder()).run()
+        try writable.pool.close()
+
+        let tools = try GraniteServer.tools(vaultPath: vault.root.path(percentEncoded: false),
+                                            databasePath: vault.dbURL.path(percentEncoded: false)) { database in
+            HybridSearcher(database: database, vectors: VectorIndex(database: database), embedder: SynonymEmbedder(), reranker: nil)
+        }
+        let hybrid = await tools.call("search", arguments: ["query": "automobile"])
+        let output = text(hybrid.content)
+        #expect(output.contains("Notes/Garage.md"))
+        #expect(!output.contains("Private/"))
+        if case .object(let object)? = hybrid.structuredContent { #expect(object["mode"] == .string("hybrid")) }
+
+        let keywords = await tools.call("search", arguments: ["query": "automobile", "mode": "bm25"])
+        #expect(text(keywords.content).hasPrefix("No matching notes"))
+    }
+}

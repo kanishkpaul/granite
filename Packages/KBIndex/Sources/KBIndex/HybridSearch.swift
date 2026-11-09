@@ -33,6 +33,12 @@ public struct HybridHit: Sendable {
     public let origin: String
     public let headingPath: String
     public let text: String
+    /// One-based line where the chunk starts, and the first block's `^id`, for citations.
+    public let startLine: Int
+    public let endLine: Int
+    public let blockID: String?
+    /// The note's AI label, so callers can apply taint.
+    public let aiLabel: String
     public let bm25Rank: Int?
     public let vectorRank: Int?
     public let fused: Double
@@ -130,7 +136,8 @@ public struct HybridSearcher: Sendable {
         var hits: [HybridHit] = []
         for row in rows where seen.insert(row.path).inserted {
             hits.append(HybridHit(chunk: row.chunk, path: row.path, title: row.title, type: row.type, origin: row.origin,
-                                  headingPath: row.headingPath, text: row.text, bm25Rank: bm25Rank[row.chunk],
+                                  headingPath: row.headingPath, text: row.text, startLine: row.startLine,
+                                  endLine: row.endLine, blockID: row.blockID, aiLabel: row.aiLabel, bm25Rank: bm25Rank[row.chunk],
                                   vectorRank: vectorRank[row.chunk], fused: fused[row.chunk] ?? 0,
                                   rerankScore: rerank[row.chunk]))
             if hits.count == options.limit { break }
@@ -150,6 +157,10 @@ public struct HybridSearcher: Sendable {
         let headingPath: String
         let prefix: String
         let text: String
+        let startLine: Int
+        let endLine: Int
+        let blockID: String?
+        let aiLabel: String
     }
 
     func filterSQL(_ options: HybridOptions) -> (String, StatementArguments) {
@@ -212,12 +223,16 @@ public struct HybridSearcher: Sendable {
         let json = String(decoding: try JSONEncoder().encode(chunks), as: UTF8.self)
         return try database.pool.read { db in
             try Row.fetchAll(db, sql: """
-                SELECT c.id, o.path, o.title, o.type, o.origin, c.heading_path, c.prefix, c.text
+                SELECT c.id, o.path, o.title, o.type, o.origin, o.ai_label, c.heading_path, c.prefix, c.text,
+                       fb.start_line, lb.end_line, fb.block_id
                 FROM chunks c JOIN objects o ON o.rowid = c.obj
+                JOIN blocks fb ON fb.id = c.first_block JOIN blocks lb ON lb.id = c.last_block
                 WHERE c.id IN (SELECT value FROM json_each(?))
                 """, arguments: [json])
             .map { ChunkRow(chunk: $0["id"], path: $0["path"], title: $0["title"], type: $0["type"], origin: $0["origin"],
-                            headingPath: $0["heading_path"], prefix: $0["prefix"], text: $0["text"]) }
+                            headingPath: $0["heading_path"], prefix: $0["prefix"], text: $0["text"],
+                            startLine: $0["start_line"], endLine: $0["end_line"], blockID: $0["block_id"],
+                            aiLabel: $0["ai_label"]) }
         }
     }
 }

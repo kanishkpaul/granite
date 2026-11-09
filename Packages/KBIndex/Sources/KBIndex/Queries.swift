@@ -11,8 +11,21 @@ public struct SearchHit: Sendable, Hashable {
     public let snippet: String
     public let startLine: Int
     public let blockID: String?
-    /// FTS5 bm25: lower is better.
+    /// FTS5 bm25: lower is better (or a fused score for hybrid results).
     public let score: Double
+
+    public init(path: String, title: String, type: String, origin: String, headingPath: String, snippet: String,
+                startLine: Int, blockID: String?, score: Double) {
+        self.path = path
+        self.title = title
+        self.type = type
+        self.origin = origin
+        self.headingPath = headingPath
+        self.snippet = snippet
+        self.startLine = startLine
+        self.blockID = blockID
+        self.score = score
+    }
 }
 
 public struct SearchOptions: Sendable {

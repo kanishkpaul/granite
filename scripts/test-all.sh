@@ -28,7 +28,7 @@ echo "── Editor: typecheck, vitest, build"
   || failed+=("Editor")
 if [[ " $* " == *" --app "* ]]; then
   echo "── xcodegen + xcodebuild test"
-  (cd "$root" && xcodegen && xcodebuild -project granite.xcodeproj -scheme granite -configuration Debug test -quiet) \
+  (cd "$root" && xcodegen && xcodebuild -project granite.xcodeproj -scheme granite -configuration Debug -skipMacroValidation -skipPackagePluginValidation test -quiet) \
     || failed+=("app")
 fi
 if [[ " $* " == *" --ml "* ]]; then

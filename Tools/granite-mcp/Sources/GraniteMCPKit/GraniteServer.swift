@@ -1,4 +1,5 @@
 import Foundation
+import GRDB
 import KBCore
 import KBIndex
 import MCP
@@ -28,14 +29,27 @@ public enum GraniteServer {
         return server
     }
 
+    /// Serves the tools over stdio until the client disconnects.
+    public static func serveStdio(_ tools: GraniteTools) async throws {
+        let server = await make(tools: tools)
+        try await server.start(transport: StdioTransport())
+        await server.waitUntilCompleted()
+    }
+
+    /// The embedding model the vault's vectors were made with, if any (from `embed_meta`).
+    public static func embeddingModel(in database: IndexDatabase) -> String? {
+        try? database.pool.read { db in try String.fetchOne(db, sql: "SELECT model_id FROM embed_meta WHERE id = 1") }
+    }
+
     /// Opens the vault's index read-only and assembles the tools. `db` overrides the default location.
-    public static func tools(vaultPath: String, databasePath: String?) throws -> GraniteTools {
+    public static func tools(vaultPath: String, databasePath: String?,
+                             hybrid: (@Sendable (IndexDatabase) -> HybridSearcher?)? = nil) throws -> GraniteTools {
         let vault = Vault(root: URL(filePath: (vaultPath as NSString).expandingTildeInPath))
         let databaseURL = databasePath.map { URL(filePath: ($0 as NSString).expandingTildeInPath) }
             ?? vault.supportDirectory.appending(path: "index.sqlite")
         let database = try IndexDatabase(readOnlyAt: databaseURL)
         let policy = try VaultPolicy.load(vaultRoot: vault.root)
         let audit = AuditLog(url: databaseURL.deletingLastPathComponent().appending(path: "mcp-audit.jsonl"))
-        return GraniteTools(database: database, vault: vault, policy: policy, audit: audit)
+        return GraniteTools(database: database, vault: vault, policy: policy, audit: audit, hybrid: hybrid?(database))
     }
 }

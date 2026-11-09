@@ -10,15 +10,18 @@ public struct GraniteTools: Sendable {
     public let vault: Vault
     public let policy: VaultPolicy
     public let audit: AuditLog?
+    /// BM25 + vectors (+ rerank) when the bundled helper loads local models; nil means BM25 only.
+    public let hybrid: HybridSearcher?
 
     /// Upper bound on `get_note` output, so one call cannot flood the client's context.
     static let maxNoteCharacters = 200_000
 
-    public init(database: IndexDatabase, vault: Vault, policy: VaultPolicy, audit: AuditLog?) {
+    public init(database: IndexDatabase, vault: Vault, policy: VaultPolicy, audit: AuditLog?, hybrid: HybridSearcher? = nil) {
         self.database = database
         self.vault = vault
         self.policy = policy
         self.audit = audit
+        self.hybrid = hybrid
     }
 
     // MARK: Definitions
@@ -39,6 +42,8 @@ public struct GraniteTools: Sendable {
                     "limit": .object(["type": "integer", "description": "Maximum results (1-50, default 10)."]),
                     "folder": .object(["type": "string", "description": "Only search under this vault folder, e.g. Papers."]),
                     "include_ai": .object(["type": "boolean", "description": "Also search the AI/ layer (default false)."]),
+                    "mode": .object(["type": "string", "enum": .array(["hybrid", "bm25"]),
+                                     "description": "hybrid (keywords + meaning, reranked; default when available) or bm25 (keywords only)."]),
                 ]),
                 "required": .array(["query"]),
             ]),
@@ -89,7 +94,7 @@ public struct GraniteTools: Sendable {
     public func call(_ name: String, arguments: [String: Value]?) async -> CallTool.Result {
         let arguments = arguments ?? [:]
         do {
-            let (result, paths) = try handle(name, arguments)
+            let (result, paths) = try await handle(name, arguments)
             await audit?.record(tool: name, paths: paths, isError: false)
             return result
         } catch let error as ToolError {
@@ -105,9 +110,9 @@ public struct GraniteTools: Sendable {
         let description: String
     }
 
-    func handle(_ name: String, _ arguments: [String: Value]) throws -> (CallTool.Result, [String]) {
+    func handle(_ name: String, _ arguments: [String: Value]) async throws -> (CallTool.Result, [String]) {
         switch name {
-        case "search": return try search(arguments)
+        case "search": return try await search(arguments)
         case "get_note": return try getNote(arguments)
         case "get_backlinks": return try backlinks(arguments)
         case "list_recent": return try recent(arguments)
@@ -145,21 +150,49 @@ public struct GraniteTools: Sendable {
 
     // MARK: Tools
 
-    func search(_ arguments: [String: Value]) throws -> (CallTool.Result, [String]) {
+    /// One search result, from either BM25 or hybrid search.
+    struct Found {
+        let path: String
+        let title: String
+        let type: String
+        let origin: String
+        let headingPath: String
+        let snippet: String
+        let startLine: Int
+        let blockID: String?
+    }
+
+    func search(_ arguments: [String: Value]) async throws -> (CallTool.Result, [String]) {
         guard let query = arguments["query"]?.stringValue, !query.trimmingCharacters(in: .whitespaces).isEmpty else {
             throw ToolError(description: "search needs a non-empty query")
         }
         let limit = Self.clamp(arguments["limit"]?.intValue, default: 10, max: 50)
         let folders = arguments["folder"]?.stringValue.map { [$0] } ?? []
         let includeAI = arguments["include_ai"]?.boolValue ?? false
-        let hits: [SearchHit]
-        do {
-            hits = try database.search(query, options: SearchOptions(limit: limit * 2, includeAI: includeAI, maxLabel: .cloud,
-                                                                     folders: folders))
-        } catch QueryError.emptyQuery {
-            throw ToolError(description: "the query has no searchable words")
+        let useHybrid = hybrid != nil && arguments["mode"]?.stringValue != "bm25"
+        var found: [Found] = []
+        if useHybrid, let hybrid {
+            var options = HybridOptions()
+            options.limit = limit * 2
+            options.includeAI = includeAI
+            options.maxLabel = .cloud
+            options.folders = folders
+            found = try await hybrid.search(query, options: options).hits.map { hit in
+                Found(path: hit.path, title: hit.title, type: hit.type, origin: hit.origin, headingPath: hit.headingPath,
+                      snippet: String(hit.text.prefix(300)), startLine: hit.startLine, blockID: hit.blockID)
+            }
+        } else {
+            do {
+                found = try database.search(query, options: SearchOptions(limit: limit * 2, includeAI: includeAI, maxLabel: .cloud,
+                                                                          folders: folders)).map { hit in
+                    Found(path: hit.path, title: hit.title, type: hit.type, origin: hit.origin, headingPath: hit.headingPath,
+                          snippet: hit.snippet, startLine: hit.startLine, blockID: hit.blockID)
+                }
+            } catch QueryError.emptyQuery {
+                throw ToolError(description: "the query has no searchable words")
+            }
         }
-        let visible = Array(hits.filter { !policy.policy(for: $0.path).mcpHidden }.prefix(limit))
+        let visible = Array(found.filter { !policy.policy(for: $0.path).mcpHidden }.prefix(limit))
         if visible.isEmpty {
             return (CallTool.Result(content: [Self.text("No matching notes. The vault has no visible note on that.")]), [])
         }
@@ -171,7 +204,7 @@ public struct GraniteTools: Sendable {
             lines.append("   cite: \(Self.citation(hit))")
             lines.append("   \(hit.snippet.replacingOccurrences(of: "\n", with: " "))")
         }
-        let structured: Value = .object(["results": .array(visible.map { hit in
+        let structured: Value = .object(["mode": .string(useHybrid ? "hybrid" : "bm25"), "results": .array(visible.map { hit in
             .object([
                 "path": .string(hit.path), "title": .string(hit.title), "line": .int(hit.startLine),
                 "heading": .string(hit.headingPath), "block": hit.blockID.map(Value.string) ?? .null,
@@ -183,13 +216,13 @@ public struct GraniteTools: Sendable {
                 visible.map(\.path))
     }
 
-    static func text(_ value: String) -> Tool.Content {
-        .text(text: value, annotations: nil, _meta: nil)
-    }
-
-    static func citation(_ hit: SearchHit) -> String {
+    static func citation(_ hit: Found) -> String {
         if let block = hit.blockID { return "[[\(hit.title)#^\(block)]]" }
         return "\(hit.path):\(hit.startLine)"
+    }
+
+    static func text(_ value: String) -> Tool.Content {
+        .text(text: value, annotations: nil, _meta: nil)
     }
 
     func getNote(_ arguments: [String: Value]) throws -> (CallTool.Result, [String]) {

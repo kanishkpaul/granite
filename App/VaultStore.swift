@@ -33,6 +33,9 @@ final class VaultStore {
     private(set) var state: StateDatabase?
     /// Every model call goes through this (routing, labels, budget, audit).
     private(set) var models: ModelService?
+    /// Local embeddings, background embedding, hybrid search.
+    let semantic = SemanticEngine()
+    private var lastSearch: (id: Int64, at: Date, paths: [String])?
     private var policy = VaultPolicy.builtIn
     var budget: Budget { policy.budget ?? .standard }
 
@@ -100,6 +103,7 @@ final class VaultStore {
             let indexer = Indexer(database: database, vault: vault, policy: policy)
             self.database = database
             self.indexer = indexer
+            semantic.start(database: database)
             let renamer = RenameService(indexer: indexer, writer: writer)
             self.renamer = renamer
             inbox = InboxQueue(indexer: indexer, writer: writer, renamer: renamer)
@@ -130,7 +134,10 @@ final class VaultStore {
         isIndexing = false
         refreshLists()
         refreshInspector()
-        if update.kind == .fullReconcile || !update.paths.isEmpty { onVaultChanged?() }
+        if update.kind == .fullReconcile || !update.paths.isEmpty {
+            onVaultChanged?()
+            semantic.scheduleEmbedding()
+        }
         status = update.kind == .fullReconcile ? update.report.description : "Updated \(update.paths.count) note(s)"
         if let path = openPath, update.kind == .fullReconcile || update.paths.contains(path) {
             reloadIfChangedOnDisk(path)
@@ -160,19 +167,49 @@ final class VaultStore {
     }
 
     /// Debounced full-text search; the query runs off the main actor.
+    /// Debounced search: hybrid (keywords + meaning) once passages are embedded, else keywords.
+    /// Runs off the main actor; logged for the re-find metric.
     func search(_ text: String) {
         searchTask?.cancel()
         guard let database, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
             hits = []
             return
         }
+        let hybrid = semantic.hasVectors ? semantic.searcher : nil
+        let state = self.state
         searchTask = Task {
-            try? await Task.sleep(for: .milliseconds(120))
+            try? await Task.sleep(for: .milliseconds(150))
             guard !Task.isCancelled else { return }
-            let result = await Task.detached(priority: .userInitiated) { try? database.search(text) }.value
+            var result: [SearchHit] = []
+            if let hybrid {
+                var options = HybridOptions()
+                options.limit = 30
+                options.useReranker = false
+                options.includeAI = true
+                let found = (try? await hybrid.search(text, options: options).hits) ?? []
+                result = found.map { hit in
+                    SearchHit(path: hit.path, title: hit.title, type: hit.type, origin: hit.origin, headingPath: hit.headingPath,
+                              snippet: String(hit.text.prefix(240)), startLine: hit.startLine, blockID: hit.blockID,
+                              score: hit.fused)
+                }
+            } else {
+                result = await Task.detached(priority: .userInitiated) { (try? database.search(text, options: SearchOptions(limit: 30, includeAI: true))) ?? [] }.value
+            }
             guard !Task.isCancelled else { return }
-            hits = result ?? []
+            hits = result
+            if let id = try? state?.recordSearch(query: text, mode: hybrid == nil ? "bm25" : "hybrid", results: result.count) {
+                lastSearch = (id, Date(), result.map(\.path))
+            }
         }
+    }
+
+    /// Opening a search result: records rank and time-to-open for the re-find metric.
+    func openSearchResult(_ hit: SearchHit) {
+        if let last = lastSearch, let rank = last.paths.firstIndex(of: hit.path) {
+            try? state?.recordOpen(searchID: last.id, path: hit.path, rank: rank + 1,
+                                   msToOpen: Date().timeIntervalSince(last.at) * 1000)
+        }
+        openNote(hit.path, line: hit.startLine)
     }
 
     struct NoVaultError: LocalizedError {

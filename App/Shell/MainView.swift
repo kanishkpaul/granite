@@ -21,7 +21,7 @@ struct MainView: View {
         } detail: {
             EditorView(controller: store.editor)
                 .overlay(alignment: .bottomLeading) {
-                    Text(store.status).font(.caption).foregroundStyle(.secondary).padding(8).lineLimit(1)
+                    Text(store.semantic.status ?? store.status).font(.caption).foregroundStyle(.secondary).padding(8).lineLimit(1)
                 }
                 .overlay {
                     if store.openPath == nil {
@@ -134,7 +134,8 @@ struct NoteListView: View {
                 }
             } else {
                 List(store.hits, id: \.path) { hit in
-                    row(title: hit.title, detail: hit.snippet, trailing: hit.headingPath, path: hit.path, line: hit.startLine)
+                    row(title: hit.title, detail: hit.snippet, trailing: hit.headingPath, path: hit.path, line: hit.startLine,
+                        open: { store.openSearchResult(hit) })
                 }
                 .overlay {
                     if store.hits.isEmpty { ContentUnavailableView.search(text: query) }
@@ -147,9 +148,10 @@ struct NoteListView: View {
         path.split(separator: "/").dropLast().joined(separator: "/")
     }
 
-    private func row(title: String, detail: String, trailing: String, path: String, line: Int? = nil) -> some View {
+    private func row(title: String, detail: String, trailing: String, path: String, line: Int? = nil,
+                     open: (() -> Void)? = nil) -> some View {
         Button {
-            store.openNote(path, line: line)
+            if let open { open() } else { store.openNote(path, line: line) }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline) {

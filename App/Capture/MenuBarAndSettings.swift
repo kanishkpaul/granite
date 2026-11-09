@@ -81,6 +81,8 @@ struct AISettingsSection: View {
 
     var body: some View {
         Section("AI") {
+            Toggle("Semantic search (local; downloads ~0.4 GB once)", isOn: Binding(
+                get: { store.semantic.isEnabled }, set: { store.semantic.isEnabled = $0 }))
             if hasKey {
                 LabeledContent("Claude API key") {
                     HStack {
