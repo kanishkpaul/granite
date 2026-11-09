@@ -136,12 +136,11 @@ final class VaultStore {
         }
         let hash = Data(SHA256.hash(data: data))
         guard hash != editorHash else { return }
-        loadedVersion += 1
         editorHash = hash
-        let text = String(decoding: data, as: UTF8.self)
-        editor.send(.load(path: path, text: text, version: loadedVersion, cursor: min(cursor, text.utf16.count)))
+        // The editor applies it as a minimal edit (cursor and undo kept), or asks if it has unsaved edits.
+        editor.send(.external(path: path, text: String(decoding: data, as: UTF8.self)))
         sendResolved(for: path)
-        status = "Reloaded \(path): changed on disk"
+        status = "\(path) changed on disk"
     }
 
     /// Debounced full-text search; the query runs off the main actor.
@@ -220,6 +219,10 @@ final class VaultStore {
             Task { await save(text, to: path) }
         case .selection(_, let head, _):
             cursor = head
+        case .complete(let id, let kind, let query):
+            editor.send(.completions(id: id, items: completions(kind: kind, query: query)))
+        case .resolveEmbed(let id, let target):
+            editor.send(.embed(embedContent(id: id, target: target)))
         case .openLink(let target, _, _, _):
             guard let from = openPath, let database else { return }
             if let path = try? database.resolve(linkTarget: target, from: from) {
@@ -317,6 +320,96 @@ final class VaultStore {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("[[\(NoteParser.title(for: path))]]", forType: .string)
         status = "Copied [[\(NoteParser.title(for: path))]]"
+    }
+}
+
+extension VaultStore {
+    // MARK: Editor requests
+
+    func completions(kind: String, query: String) -> [CompletionItem] {
+        guard let database else { return [] }
+        if kind == "tag" {
+            return ((try? database.tags(matching: query)) ?? []).map {
+                CompletionItem(label: $0.tag, apply: nil, detail: "\($0.count)")
+            }
+        }
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
+            return recentNotes(limit: 15).map { CompletionItem(label: $0.title, apply: nil, detail: Self.folder(of: $0.path)) }
+        }
+        return ((try? database.titles(matching: trimmed, limit: 20)) ?? []).map {
+            CompletionItem(label: $0.title, apply: nil, detail: Self.folder(of: $0.path))
+        }
+    }
+
+    static func folder(of path: String) -> String {
+        path.split(separator: "/").dropLast().joined(separator: "/")
+    }
+
+    static let imageTypes: [String: String] = [
+        "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif", "webp": "image/webp",
+        "svg": "image/svg+xml", "heic": "image/heic",
+    ]
+
+    /// `![[target]]`: a note (or one of its sections or blocks) as text, or an image as a data URL.
+    /// Only files inside the vault are ever read.
+    func embedContent(id: Int, target: String) -> EmbedContent {
+        let missing = EmbedContent(id: id, target: target, kind: .missing)
+        guard let vault, let database else { return missing }
+        let parts = target.split(separator: "#", maxSplits: 1).map(String.init)
+        let name = parts.first?.trimmingCharacters(in: .whitespaces) ?? ""
+        let anchor = parts.count > 1 ? parts[1] : nil
+        guard !name.split(separator: "/").contains("..") else { return missing }
+
+        let ext = (name as NSString).pathExtension.lowercased()
+        if let mime = Self.imageTypes[ext] {
+            guard let url = findAttachment(named: name, in: vault),
+                  let data = try? Data(contentsOf: url), data.count <= 8_000_000 else { return missing }
+            return EmbedContent(id: id, target: target, kind: .image, dataURL: "data:\(mime);base64,\(data.base64EncodedString())")
+        }
+        guard let path = try? database.resolve(linkTarget: name, from: openPath ?? ""),
+              let data = try? Data(contentsOf: vault.url(for: path)) else { return missing }
+        let note = NoteParser.parse(data: data, path: path, policy: policy)
+        var blocks = note.blocks
+        var title = note.title
+        if let anchor, anchor.hasPrefix("^") {
+            blocks = blocks.filter { $0.blockID == String(anchor.dropFirst()) }
+            title += " ›"
+        } else if let anchor, !anchor.isEmpty {
+            let heading = anchor.split(separator: "#").last.map(String.init) ?? anchor
+            if let start = blocks.firstIndex(where: { $0.kind == .heading && $0.text == heading }) {
+                let level = blocks[start].level ?? 1
+                let rest = blocks[(start + 1)...].prefix { $0.kind != .heading || ($0.level ?? 6) > level }
+                blocks = Array(rest)
+                title += " › \(heading)"
+            } else {
+                blocks = []
+            }
+        }
+        var text = blocks.map(\.text).joined(separator: "\n\n")
+        if text.count > 1_500 { text = String(text.prefix(1_500)) + "…" }
+        return EmbedContent(id: id, target: target, kind: .note, title: title, text: text)
+    }
+
+    /// Obsidian-style attachment lookup: an exact vault path, next to the open note, `Attachments/`,
+    /// then anywhere in the vault by file name (first match, hidden folders skipped).
+    private func findAttachment(named name: String, in vault: Vault) -> URL? {
+        let manager = FileManager.default
+        var candidates = [name, "Attachments/\(name)"]
+        if let open = openPath {
+            let folder = Self.folder(of: open)
+            if !folder.isEmpty { candidates.insert("\(folder)/\(name)", at: 1) }
+        }
+        for candidate in candidates where manager.fileExists(atPath: vault.url(for: candidate).path(percentEncoded: false)) {
+            return vault.url(for: candidate)
+        }
+        let fileName = (name as NSString).lastPathComponent
+        guard let enumerator = manager.enumerator(at: vault.root, includingPropertiesForKeys: nil,
+                                                  options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return nil }
+        for case let url as URL in enumerator where url.lastPathComponent == fileName {
+            return url
+        }
+        return nil
     }
 }
 

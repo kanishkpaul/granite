@@ -314,4 +314,17 @@ func rowid(_ database: IndexDatabase, _ path: String) throws -> Int64? {
         #expect(try database.notes(inFolder: "Note").isEmpty, "a prefix of a folder name is not that folder")
         #expect(try database.notes(inFolder: "Notes", limit: 1, offset: 1).map(\.path) == ["Notes/a.md"])
     }
+
+    @Test func tagCompletionOrder() async throws {
+        let temp = try TempVault()
+        try temp.put("a.md", "#retrieval #reading\n")
+        try temp.put("b.md", "#retrieval #Research\n")
+        try temp.put("c.md", "#retrieval\n")
+        let (database, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        let tags = try database.tags(matching: "re")
+        #expect(tags.map(\.tag) == ["retrieval", "Research", "reading"])
+        #expect(tags.first?.count == 3)
+        #expect(try database.tags(matching: "RES").map(\.tag) == ["Research"])
+    }
 }

@@ -31,8 +31,7 @@ The inspector holds links and facts about the open note, not AI suggestions (pla
 ## Files
 `Packages/KBIndex/Sources/KBIndex/Browse.swift` (folders, notes in folder, recent), `Packages/KBCapture/Sources/KBCapture/NoteFactory.swift`, `App/Shell/` (views, switcher, palette, commands).
 
-## Known gaps (phase 1 item 4)
-- Frontmatter shows as raw YAML in the editor (the inspector shows it as properties); callout markers aren't hidden.
+## Known gaps
 - New-note titles are prompted through the switcher; renaming notes (with link rewriting) is not built.
 
 ## Done when

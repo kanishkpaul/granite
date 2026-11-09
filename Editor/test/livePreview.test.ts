@@ -51,7 +51,10 @@ describe("live preview", () => {
     const after = state(doc, doc.length, ["known"]);
     const specs = computeDecorations(after);
     expect(marks(after, specs, "cm-unresolved")).toEqual(["Missing"]);
-    expect(marks(after, specs, "cm-embed")).toEqual(["Known.md"]);
+    // Off the active line an embed becomes a widget showing its content.
+    expect(specs.filter((d) => d.kind === "widget")).toEqual([{ kind: "widget", from: 30, to: 43, widget: "embed", data: "Known.md" }]);
+    const onLine = state(doc, 2, ["known"]);
+    expect(marks(onLine, computeDecorations(onLine), "cm-embed")).toEqual(["Known.md"]);
   });
 
   it("styles tags, block ids, emphasis and callouts", () => {
@@ -62,7 +65,10 @@ describe("live preview", () => {
     expect(marks(s, specs, "cm-block-id")).toEqual(["^block-1"]);
     expect(marks(s, specs, "cm-em")).toEqual(["*em*"]);
     expect(marks(s, specs, "cm-strong")).toEqual(["**strong**"]);
-    expect(hidden(s, specs)).toEqual(["*", "*", "**", "**"]);
+    expect(hidden(s, specs)).toEqual(["*", "*", "**", "**", "> ", "> "]);
+    expect(specs.filter((d) => d.kind === "widget")).toEqual([
+      { kind: "widget", from: s.doc.line(3).from + 2, to: s.doc.line(3).from + 10, widget: "callout", data: "note" },
+    ]);
     const callouts = specs.filter((d) => d.kind === "line" && d.className.includes("cm-callout"));
     expect(callouts.map((d) => (d.kind === "line" ? d.className : ""))).toEqual([
       "cm-callout cm-callout-title cm-callout-note",
@@ -97,5 +103,26 @@ describe("link targets match KBCore", () => {
     expect(parseTarget("Note#^abc")).toEqual({ target: "Note", blockID: "abc" });
     expect(parseTarget("Note#A#B")).toEqual({ target: "Note", heading: "B" });
     expect(parseTarget("#Section")).toEqual({ target: "", heading: "Section" });
+  });
+});
+
+describe("quotes and callouts", () => {
+  it("hides quote markers off the active line and styles quote lines", () => {
+    const doc = "> plain quote\n> second\n\nafter";
+    const off = state(doc);
+    const specs = computeDecorations(off);
+    expect(hidden(off, specs)).toEqual(["> ", "> "]);
+    expect(specs.filter((d) => d.kind === "line").map((d) => (d.kind === "line" ? d.className : ""))).toEqual(["cm-quote", "cm-quote"]);
+    const on = state(doc, 3);
+    expect(hidden(on, computeDecorations(on))).toEqual(["> "]);
+  });
+
+  it("keeps the raw callout syntax on the active line", () => {
+    const doc = "> [!warning]- Careful\n> body\n\nx";
+    const on = state(doc, 5);
+    expect(computeDecorations(on).some((d) => d.kind === "widget")).toBe(false);
+    const off = state(doc);
+    const widget = computeDecorations(off).find((d) => d.kind === "widget");
+    expect(widget && "to" in widget ? off.sliceDoc(widget.from, widget.to) : "").toBe("[!warning]- ");
   });
 });

@@ -41,3 +41,17 @@ extension IndexDatabase {
         }
     }
 }
+
+extension IndexDatabase {
+    /// Tags starting with `prefix` (case-insensitive), most used first: for `#` completion.
+    public func tags(matching prefix: String, limit: Int = 20) throws -> [(tag: String, count: Int)] {
+        let key = prefix.lowercased()
+        return try pool.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT min(tag) AS tag, count(*) AS n FROM tags
+                WHERE substr(tag_key, 1, ?) = ? GROUP BY tag_key ORDER BY n DESC, tag LIMIT ?
+                """, arguments: [key.count, key, limit])
+            .map { (tag: $0["tag"], count: $0["n"]) }
+        }
+    }
+}

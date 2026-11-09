@@ -7,17 +7,26 @@
     { "type": "command", "name": "redo" },
     { "type": "command", "name": "focus" },
     { "type": "command", "name": "selectAll" },
-    { "type": "bench", "lines": [1, 25000, 50000], "keystrokes": 60, "scrollMs": 3000 }
+    { "type": "bench", "lines": [1, 25000, 50000], "keystrokes": 60, "scrollMs": 3000 },
+    { "type": "completions", "id": 7, "items": [{ "label": "Hybrid retrieval", "detail": "Notes" }, { "label": "Hybrid search", "apply": "Hybrid retrieval", "detail": "alias" }] },
+    { "type": "completions", "id": 8, "items": [] },
+    { "type": "embed", "id": 9, "target": "Hybrid retrieval#^c1", "kind": "note", "title": "Hybrid retrieval", "text": "Hybrid beats embedding choice." },
+    { "type": "embed", "id": 10, "target": "diagram.png", "kind": "image", "dataURL": "data:image/png;base64,iVBORw0KGgo=" },
+    { "type": "embed", "id": 11, "target": "nowhere", "kind": "missing" },
+    { "type": "external", "path": "Notes/a.md", "text": "changed on disk\n" }
   ],
   "editor": [
-    { "type": "ready", "protocol": 1 },
+    { "type": "ready", "protocol": 2 },
     { "type": "loaded", "version": 3, "ms": 41.5 },
     { "type": "changed", "version": 4, "text": "# Title\n\nedited ✓" },
     { "type": "selection", "anchor": 5, "head": 9, "line": 1 },
     { "type": "openLink", "target": "Other", "heading": "Part", "newPane": false },
     { "type": "openLink", "target": "anthropic2024contextual", "blockID": "z-7HQ2KX9P", "newPane": true },
     { "type": "benchResult", "result": { "typing": [1.5, 2.25], "parsedTyping": [1], "parseMs": [250.5], "domTyping": [3], "scrollFrames": [16.7], "undoRestored": true, "redoReapplied": true, "docLines": 50000 } },
-    { "type": "log", "level": "error", "message": "bad message" }
+    { "type": "log", "level": "error", "message": "bad message" },
+    { "type": "complete", "id": 7, "kind": "link", "query": "hybr" },
+    { "type": "complete", "id": 12, "kind": "tag", "query": "retr" },
+    { "type": "resolveEmbed", "id": 9, "target": "Hybrid retrieval#^c1" }
   ],
   "invalidHost": [
     { "type": "nope" },
@@ -25,6 +34,9 @@
     { "type": "load", "path": "x.md", "text": 5, "version": 1 },
     { "type": "command", "name": "deleteEverything" },
     { "type": "setResolved", "targets": [1, 2] },
+    { "type": "embed", "id": 1, "target": "x", "kind": "video" },
+    { "type": "completions", "id": 1, "items": [{ "detail": "no label" }] },
+    { "type": "external", "path": "a.md" },
     "not json",
     null
   ]

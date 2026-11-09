@@ -29,7 +29,7 @@ import Testing
 
     @Test func hostMessagesRoundTrip() throws {
         let fixtures = try fixtures()
-        #expect(fixtures.host.count == 8)
+        #expect(fixtures.host.count == 14)
         for message in fixtures.host {
             let (original, again) = try roundTrip(HostMessage.self, message)
             #expect(original == again)
@@ -38,7 +38,7 @@ import Testing
 
     @Test func editorMessagesRoundTrip() throws {
         let fixtures = try fixtures()
-        #expect(fixtures.editor.count == 8)
+        #expect(fixtures.editor.count == 11)
         for message in fixtures.editor {
             let (original, again) = try roundTrip(EditorMessage.self, message)
             #expect(original == again)

@@ -1,7 +1,21 @@
 import { syntaxTree } from "@codemirror/language";
-import { type EditorState, type Range, StateEffect, StateField } from "@codemirror/state";
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { type EditorState, Facet, type Range, StateEffect, StateField } from "@codemirror/state";
+import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
+import type { EmbedKind } from "./bridge";
 import { linkKey } from "./wikilink";
+
+/** What an embed shows. `text` for notes, `dataURL` for images. */
+export interface EmbedContent {
+  kind: EmbedKind;
+  title?: string;
+  text?: string;
+  dataURL?: string;
+}
+
+/** How embed widgets fetch content (the editor asks the host). Cached per target. */
+export const embedResolver = Facet.define<(target: string) => Promise<EmbedContent>, ((target: string) => Promise<EmbedContent>) | null>({
+  combine: (values) => values[0] ?? null,
+});
 
 // Obsidian-style live preview: Markdown syntax marks are hidden except on lines the selection
 // touches, headings and links are styled in place. Only visible ranges are decorated.
@@ -21,7 +35,9 @@ export const resolvedTargets = StateField.define<ReadonlySet<string> | null>({
 export type DecorationSpec =
   | { kind: "hide"; from: number; to: number }
   | { kind: "mark"; from: number; to: number; className: string; attributes?: Record<string, string> }
-  | { kind: "line"; from: number; className: string };
+  | { kind: "line"; from: number; className: string }
+  /** Replaces a range with a widget: a callout's type label, or an embed's content. */
+  | { kind: "widget"; from: number; to: number; widget: "callout" | "embed"; data: string };
 
 const HIDDEN_MARKS = new Set(["HeaderMark", "EmphasisMark", "CodeMark", "StrikethroughMark"]);
 const MARK_CLASSES: Record<string, string> = {
@@ -68,15 +84,27 @@ export function computeDecorations(
         }
         if (name === "Blockquote") {
           const line = state.doc.lineAt(node.from);
-          const callout = /^>\s*\[!([\w-]+)\]/.exec(line.text);
-          if (callout) {
-            const last = state.doc.lineAt(node.to).number;
-            for (let number = line.number; number <= last; number++) {
-              const className = number === line.number ? "cm-callout cm-callout-title" : "cm-callout";
-              specs.push({ kind: "line", from: state.doc.line(number).from, className: `${className} cm-callout-${callout[1]!.toLowerCase()}` });
-            }
+          const last = state.doc.lineAt(node.to).number;
+          const callout = /^(>\s*)(\[!([\w-]+)\][+-]?\s?)/.exec(line.text);
+          for (let number = line.number; number <= last; number++) {
+            const className = callout
+              ? `${number === line.number ? "cm-callout cm-callout-title" : "cm-callout"} cm-callout-${callout[3]!.toLowerCase()}`
+              : "cm-quote";
+            specs.push({ kind: "line", from: state.doc.line(number).from, className });
+          }
+          if (callout && !isActive(line.from)) {
+            const start = line.from + callout[1]!.length;
+            specs.push({ kind: "widget", from: start, to: start + callout[2]!.length, widget: "callout",
+                         data: callout[3]!.toLowerCase() });
           }
           return;
+        }
+        if (name === "QuoteMark") {
+          if (!isActive(node.from)) {
+            const end = state.sliceDoc(node.to, node.to + 1) === " " ? node.to + 1 : node.to;
+            specs.push({ kind: "hide", from: node.from, to: end });
+          }
+          return false;
         }
         if (name === "FencedCode") {
           const first = state.doc.lineAt(node.from).number;
@@ -92,10 +120,16 @@ export function computeDecorations(
           const aliasNode = node.node.getChild("WikiLinkAlias");
           const raw = targetNode ? state.sliceDoc(targetNode.from, targetNode.to) : "";
           const key = linkKey(raw);
-          const unresolved = resolved !== null && key !== "" && !resolved.has(key);
+          // Attachments (images, PDFs) aren't notes, so they never count as unresolved links.
+          const isAttachment = /\.[a-z0-9]{2,5}$/i.test(key) && !key.endsWith(".md");
+          const unresolved = resolved !== null && key !== "" && !isAttachment && !resolved.has(key);
           const className = [name === "Embed" ? "cm-embed" : "cm-wikilink", unresolved ? "cm-unresolved" : ""]
             .filter(Boolean)
             .join(" ");
+          if (name === "Embed" && !lineActive && raw) {
+            specs.push({ kind: "widget", from: node.from, to: node.to, widget: "embed", data: raw });
+            return false;
+          }
           const visibleFrom = !lineActive && aliasNode ? aliasNode.from : (targetNode?.from ?? node.from);
           const visibleTo = aliasNode && !lineActive ? aliasNode.to : (targetNode?.to ?? node.to);
           if (!lineActive) {
@@ -122,12 +156,78 @@ export function computeDecorations(
   return specs;
 }
 
+const CALLOUT_ICONS: Record<string, string> = {
+  note: "✎", info: "ℹ", tip: "★", warning: "⚠", danger: "⚡", question: "?", quote: "❝", prompt: "◆", example: "▸",
+};
+
+class CalloutLabel extends WidgetType {
+  constructor(readonly type: string) {
+    super();
+  }
+  override eq(other: CalloutLabel) {
+    return other.type === this.type;
+  }
+  toDOM() {
+    const element = document.createElement("span");
+    element.className = `cm-callout-label cm-callout-label-${this.type}`;
+    element.textContent = `${CALLOUT_ICONS[this.type] ?? "•"} ${this.type.charAt(0).toUpperCase()}${this.type.slice(1)}`;
+    return element;
+  }
+}
+
+class EmbedWidget extends WidgetType {
+  constructor(readonly target: string) {
+    super();
+  }
+  override eq(other: EmbedWidget) {
+    return other.target === this.target;
+  }
+  toDOM(view: EditorView) {
+    const element = document.createElement("span");
+    element.className = "cm-embed-box";
+    element.textContent = `↳ ${this.target}`;
+    const resolve = view.state.facet(embedResolver);
+    if (resolve) {
+      void resolve(this.target).then((content) => render(element, this.target, content));
+    }
+    return element;
+  }
+  override ignoreEvent() {
+    return false;
+  }
+}
+
+function render(element: HTMLElement, target: string, content: EmbedContent) {
+  element.replaceChildren();
+  if (content.kind === "image" && content.dataURL) {
+    const image = document.createElement("img");
+    image.src = content.dataURL;
+    image.alt = target;
+    image.className = "cm-embed-image";
+    element.appendChild(image);
+  } else if (content.kind === "note") {
+    const title = document.createElement("span");
+    title.className = "cm-embed-title";
+    title.textContent = content.title ?? target;
+    const body = document.createElement("span");
+    body.className = "cm-embed-text";
+    body.textContent = content.text ?? "";
+    element.append(title, body);
+  } else {
+    element.classList.add("cm-embed-missing");
+    element.textContent = `↳ ${target} (not found)`;
+  }
+}
+
 function toDecorationSet(specs: DecorationSpec[]): DecorationSet {
   const ranges: Range<Decoration>[] = [];
   for (const spec of specs) {
     if (spec.kind === "hide") ranges.push(Decoration.replace({}).range(spec.from, spec.to));
     else if (spec.kind === "mark") {
       ranges.push(Decoration.mark({ class: spec.className, attributes: spec.attributes }).range(spec.from, spec.to));
+    } else if (spec.kind === "widget") {
+      const widget = spec.widget === "callout" ? new CalloutLabel(spec.data) : new EmbedWidget(spec.data);
+      ranges.push(Decoration.replace({ widget }).range(spec.from, spec.to));
     } else ranges.push(Decoration.line({ class: spec.className }).range(spec.from));
   }
   return Decoration.set(ranges, true);

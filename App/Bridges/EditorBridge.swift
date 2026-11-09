@@ -5,7 +5,7 @@ import Foundation
 // is decoded and re-encoded by both sides (Vitest and EditorBridgeTests).
 
 enum EditorBridge {
-    static let protocolVersion = 1
+    static let protocolVersion = 2
     /// Name of the `WKScriptMessageHandler` the editor posts to.
     static let handlerName = "granite"
 }
@@ -14,15 +14,35 @@ enum EditorCommand: String, Codable, Sendable {
     case undo, redo, focus, selectAll
 }
 
+struct CompletionItem: Codable, Sendable, Equatable {
+    var label: String
+    var apply: String?
+    var detail: String?
+}
+
+/// Answer to `resolveEmbed`.
+struct EmbedContent: Codable, Sendable, Equatable {
+    enum Kind: String, Codable, Sendable { case note, image, missing }
+    var id: Int
+    var target: String
+    var kind: Kind
+    var title: String?
+    var text: String?
+    var dataURL: String?
+}
+
 /// Host → editor.
 enum HostMessage: Codable, Sendable, Equatable {
     case load(path: String, text: String, version: Int, cursor: Int?)
     case setResolved(targets: [String])
     case command(EditorCommand)
     case bench(lines: [Int], keystrokes: Int, scrollMs: Int)
+    case completions(id: Int, items: [CompletionItem])
+    case embed(EmbedContent)
+    case external(path: String, text: String)
 
     private enum CodingKeys: String, CodingKey {
-        case type, path, text, version, cursor, targets, name, lines, keystrokes, scrollMs
+        case type, path, text, version, cursor, targets, name, lines, keystrokes, scrollMs, id, items
     }
 
     init(from decoder: any Decoder) throws {
@@ -42,6 +62,14 @@ enum HostMessage: Codable, Sendable, Equatable {
             self = .bench(lines: try container.decode([Int].self, forKey: .lines),
                           keystrokes: try container.decode(Int.self, forKey: .keystrokes),
                           scrollMs: try container.decode(Int.self, forKey: .scrollMs))
+        case "completions":
+            self = .completions(id: try container.decode(Int.self, forKey: .id),
+                                items: try container.decode([CompletionItem].self, forKey: .items))
+        case "embed":
+            self = .embed(try EmbedContent(from: decoder))
+        case "external":
+            self = .external(path: try container.decode(String.self, forKey: .path),
+                             text: try container.decode(String.self, forKey: .text))
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "unknown host message \(type)")
         }
@@ -67,6 +95,17 @@ enum HostMessage: Codable, Sendable, Equatable {
             try container.encode(lines, forKey: .lines)
             try container.encode(keystrokes, forKey: .keystrokes)
             try container.encode(scrollMs, forKey: .scrollMs)
+        case .completions(let id, let items):
+            try container.encode("completions", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(items, forKey: .items)
+        case .embed(let content):
+            try container.encode("embed", forKey: .type)
+            try content.encode(to: encoder)
+        case .external(let path, let text):
+            try container.encode("external", forKey: .type)
+            try container.encode(path, forKey: .path)
+            try container.encode(text, forKey: .text)
         }
     }
 
@@ -96,10 +135,12 @@ enum EditorMessage: Codable, Sendable, Equatable {
     case openLink(target: String, heading: String?, blockID: String?, newPane: Bool)
     case benchResult(BenchResult)
     case log(level: String, message: String)
+    case complete(id: Int, kind: String, query: String)
+    case resolveEmbed(id: Int, target: String)
 
     private enum CodingKeys: String, CodingKey {
         case type, `protocol`, version, ms, text, anchor, head, line, target, heading, blockID, newPane, result, level,
-             message
+             message, id, kind, query
     }
 
     init(from decoder: any Decoder) throws {
@@ -128,6 +169,16 @@ enum EditorMessage: Codable, Sendable, Equatable {
         case "log":
             self = .log(level: try container.decode(String.self, forKey: .level),
                         message: try container.decode(String.self, forKey: .message))
+        case "complete":
+            let kind = try container.decode(String.self, forKey: .kind)
+            guard kind == "link" || kind == "tag" else {
+                throw DecodingError.dataCorruptedError(forKey: .kind, in: container, debugDescription: "unknown completion kind")
+            }
+            self = .complete(id: try container.decode(Int.self, forKey: .id), kind: kind,
+                             query: try container.decode(String.self, forKey: .query))
+        case "resolveEmbed":
+            self = .resolveEmbed(id: try container.decode(Int.self, forKey: .id),
+                                 target: try container.decode(String.self, forKey: .target))
         default:
             throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "unknown editor message \(type)")
         }
@@ -165,6 +216,15 @@ enum EditorMessage: Codable, Sendable, Equatable {
             try container.encode("log", forKey: .type)
             try container.encode(level, forKey: .level)
             try container.encode(message, forKey: .message)
+        case .complete(let id, let kind, let query):
+            try container.encode("complete", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(kind, forKey: .kind)
+            try container.encode(query, forKey: .query)
+        case .resolveEmbed(let id, let target):
+            try container.encode("resolveEmbed", forKey: .type)
+            try container.encode(id, forKey: .id)
+            try container.encode(target, forKey: .target)
         }
     }
 

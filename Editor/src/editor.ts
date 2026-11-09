@@ -3,12 +3,43 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, redo, redoDepth, 
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { bracketMatching, forceParsing, indentOnInput } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
-import { drawSelection, EditorView, highlightActiveLine, keymap, rectangularSelection } from "@codemirror/view";
-import { type BenchResult, type EditorMessage, type HostMessage, parseHostMessage, post, PROTOCOL_VERSION } from "./bridge";
-import { livePreview, resolvedTargets, setResolvedEffect } from "./livePreview";
+import { Annotation, EditorSelection, EditorState, type Extension, StateEffect, StateField } from "@codemirror/state";
+import { drawSelection, EditorView, highlightActiveLine, keymap, type Panel, rectangularSelection, showPanel } from "@codemirror/view";
+import { type BenchResult, type CompletionItem, type EditorMessage, type HostMessage, parseHostMessage, post, PROTOCOL_VERSION } from "./bridge";
+import { graniteCompletion } from "./completion";
+import { frontmatterFold, frontmatterRange } from "./frontmatter";
+import { HostRequests } from "./hostRequests";
+import { type EmbedContent, embedResolver, livePreview, resolvedTargets, setResolvedEffect } from "./livePreview";
 import { theme } from "./theme";
 import { obsidianSyntax, parseTarget } from "./wikilink";
+
+/** Marks transactions that apply the on-disk version: they are not local edits and are never sent back. */
+const fromDisk = Annotation.define<boolean>();
+
+const setBanner = StateEffect.define<string | null>();
+/** Text of a pending on-disk version while the editor has unsaved edits; drives the banner panel. */
+const externalBanner = StateField.define<string | null>({
+  create: () => null,
+  update(value, transaction) {
+    for (const effect of transaction.effects) if (effect.is(setBanner)) return effect.value;
+    return value;
+  },
+});
+
+/** Common prefix/suffix diff, so applying the disk version keeps the cursor and undo history. */
+export function minimalChange(current: string, next: string): { from: number; to: number; insert: string } | null {
+  if (current === next) return null;
+  let start = 0;
+  const shorter = Math.min(current.length, next.length);
+  while (start < shorter && current.charCodeAt(start) === next.charCodeAt(start)) start++;
+  let endCurrent = current.length;
+  let endNext = next.length;
+  while (endCurrent > start && endNext > start && current.charCodeAt(endCurrent - 1) === next.charCodeAt(endNext - 1)) {
+    endCurrent--;
+    endNext--;
+  }
+  return { from: start, to: endCurrent, insert: next.slice(start, endNext) };
+}
 
 export interface GraniteEditorOptions {
   parent: HTMLElement;
@@ -16,6 +47,8 @@ export interface GraniteEditorOptions {
   fallback?: (message: EditorMessage) => void;
   /** Debounce for `changed` messages, in ms. */
   changeDelay?: number;
+  /** How long to wait for host answers (completions, embeds), in ms. */
+  requestTimeout?: number;
 }
 
 export class GraniteEditor {
@@ -27,12 +60,35 @@ export class GraniteEditor {
   private readonly fallback?: (message: EditorMessage) => void;
   private readonly changeDelay: number;
   private loading = false;
+  private readonly requests: HostRequests;
+  private embedCache = new Map<string, Promise<EmbedContent>>();
 
   constructor(options: GraniteEditorOptions) {
     this.fallback = options.fallback;
     this.changeDelay = options.changeDelay ?? 250;
+    this.requests = new HostRequests((message) => this.send(message), options.requestTimeout ?? 1500);
     this.view = new EditorView({ parent: options.parent, state: this.makeState("") });
     this.send({ type: "ready", protocol: PROTOCOL_VERSION });
+  }
+
+  /** Link and tag completions, answered by the host from the index. */
+  complete(kind: "link" | "tag", query: string): Promise<CompletionItem[]> {
+    return this.requests.request<CompletionItem[]>((id) => ({ type: "complete", id, kind, query }), []);
+  }
+
+  /** Embed content, asked once per target per loaded note. */
+  resolveEmbed(target: string): Promise<EmbedContent> {
+    let pending = this.embedCache.get(target);
+    if (!pending) {
+      pending = this.requests.request<EmbedContent>((id) => ({ type: "resolveEmbed", id, target }), { kind: "missing" });
+      this.embedCache.set(target, pending);
+    }
+    return pending;
+  }
+
+  /** True while a local edit hasn't been sent to the host yet. */
+  get hasUnsentChanges(): boolean {
+    return this.changeTimer !== undefined;
   }
 
   private extensions(): Extension[] {
@@ -49,10 +105,16 @@ export class GraniteEditor {
       markdown({ base: markdownLanguage, extensions: [obsidianSyntax] }),
       resolvedTargets,
       livePreview,
+      frontmatterFold,
+      embedResolver.of((target) => this.resolveEmbed(target)),
+      graniteCompletion((kind, query) => this.complete(kind, query)),
+      externalBanner,
+      showPanel.from(externalBanner, (text) => (text === null ? null : (view) => this.bannerPanel(view))),
       theme,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
       EditorView.updateListener.of((update) => {
         if (this.loading) return;
+        if (update.transactions.some((tr) => tr.annotation(fromDisk))) return;
         if (update.docChanged) {
           this.version += 1;
           this.scheduleChanged();
@@ -99,7 +161,62 @@ export class GraniteEditor {
       case "bench":
         void runBench(this, message).then((result) => this.send({ type: "benchResult", result }));
         break;
+      case "completions":
+        this.requests.answer(message.id, message.items);
+        break;
+      case "embed":
+        this.requests.answer(message.id, {
+          kind: message.kind, title: message.title, text: message.text, dataURL: message.dataURL,
+        } satisfies EmbedContent);
+        break;
+      case "external":
+        this.external(message.path, message.text);
+        break;
     }
+  }
+
+  /** The open note changed on disk. Unsaved local edits get a choice; otherwise apply quietly. */
+  private external(path: string, text: string): void {
+    if (path !== this.path) return;
+    if (text === this.view.state.doc.toString()) return;
+    if (this.hasUnsentChanges) {
+      this.view.dispatch({ effects: setBanner.of(text) });
+      return;
+    }
+    this.applyDiskVersion(text);
+  }
+
+  private applyDiskVersion(text: string): void {
+    const change = minimalChange(this.view.state.doc.toString(), text);
+    this.view.dispatch({
+      changes: change ?? [],
+      effects: setBanner.of(null),
+      annotations: [fromDisk.of(true)],
+    });
+    this.embedCache.clear();
+  }
+
+  private bannerPanel(view: EditorView): Panel {
+    const dom = document.createElement("div");
+    dom.className = "cm-external-banner";
+    const label = document.createElement("span");
+    label.textContent = "This note changed on disk while you were editing.";
+    const keep = document.createElement("button");
+    keep.textContent = "Keep mine";
+    keep.onclick = () => {
+      view.dispatch({ effects: setBanner.of(null) });
+      this.flush();
+    };
+    const take = document.createElement("button");
+    take.textContent = "Take theirs";
+    take.onclick = () => {
+      const text = view.state.field(externalBanner);
+      clearTimeout(this.changeTimer);
+      this.changeTimer = undefined;
+      if (text !== null) this.applyDiskVersion(text);
+    };
+    dom.append(label, keep, take);
+    return { dom, top: true };
   }
 
   private load(text: string, version: number, path: string, cursor?: number): void {
@@ -107,7 +224,15 @@ export class GraniteEditor {
     this.flush();
     this.loading = true;
     const resolved = this.view.state.field(resolvedTargets, false) ?? null;
+    this.embedCache.clear();
     this.view.setState(this.makeState(text, cursor ?? 0));
+    // Opening at the top: start in the body so the frontmatter stays folded.
+    if (!cursor) {
+      const yaml = frontmatterRange(this.view.state);
+      if (yaml && yaml.to < this.view.state.doc.length) {
+        this.view.dispatch({ selection: { anchor: yaml.to + 1 }, annotations: [fromDisk.of(true)] });
+      }
+    }
     if (resolved) this.view.dispatch({ effects: setResolvedEffect.of(resolved) });
     this.loading = false;
     this.version = version;

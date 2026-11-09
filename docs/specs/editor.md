@@ -1,12 +1,12 @@
 # Spec: Editor (CodeMirror 6 in WKWebView)
 
-Status: **spike A built**; manual checks pending (see decision 0003). Plan refs: §3 stack risks, §4.7 editor bridge, §8 spike A.
+Status: **phase 1 item 4 built** (protocol v2); spike A manual checks pending (decision 0003). Plan refs: §3 stack risks, §4.7 editor bridge, §8 spike A.
 
 ## Inputs
-- Host messages (`Editor/src/bridge.ts` ⇄ `App/Bridges/EditorBridge.swift`, protocol v1): `load {path, text, version, cursor?}`, `setResolved {targets}`, `command {undo|redo|focus|selectAll}`, `bench {lines, keystrokes, scrollMs}`.
+- Host messages (`Editor/src/bridge.ts` ⇄ `App/Bridges/EditorBridge.swift`, protocol v2): `load {path, text, version, cursor?}`, `setResolved {targets}`, `command {undo|redo|focus|selectAll}`, `bench {…}`, `completions {id, items}`, `embed {id, target, kind, title?, text?, dataURL?}`, `external {path, text}`.
 
 ## Outputs
-- Editor messages: `ready {protocol}`, `loaded {version, ms}`, `changed {version, text}` (debounced 250 ms; flushed before a new load), `selection {anchor, head, line}`, `openLink {target, heading?, blockID?, newPane}` (⌘-click; ⌘⌥ for a new pane), `benchResult`, `log`.
+- Editor messages: `ready {protocol}`, `loaded {version, ms}`, `changed {version, text}` (debounced 250 ms; flushed before a new load), `selection {anchor, head, line}`, `openLink {target, heading?, blockID?, newPane}` (⌘-click; ⌘⌥ for a new pane), `benchResult`, `log`, `complete {id, kind: link|tag, query}`, `resolveEmbed {id, target}`. Requests the host doesn't answer within 1.5 s resolve to an empty result.
 
 ## Behaviour
 - Swift owns all file I/O. The editor never touches disk.
@@ -21,8 +21,8 @@ Status: **spike A built**; manual checks pending (see decision 0003). Plan refs:
 `Editor/src/{bridge,editor,livePreview,wikilink,theme,main}.ts`, `Editor/public/editor.html`, `Editor/test/*`, built output `App/Resources/editor/` (committed so the app builds without pnpm), `App/Bridges/{EditorBridge,EditorController}.swift`, `App/EditorBench.swift`, `Tests/AppTests/EditorBridgeTests.swift`.
 
 ## Tests
-- Vitest (17): bridge validation and fixture round-trip; decorations (headings, aliases, unresolved, tags, block IDs, emphasis, callouts, code, range-limited); host contract (ready, debounced changes, undo/redo via commands, history reset on load, flush before load, malformed input).
-- Swift (4): the same fixture file decoded and re-encoded to identical JSON; invalid messages rejected.
+- Vitest (29): v2 adds frontmatter fold, completion triggers and provider mapping, request timeouts, minimal diff, external-change flow (quiet apply, Keep mine, Take theirs), embed caching, callouts and quotes. Phase 0 set: bridge validation and fixture round-trip; decorations (headings, aliases, unresolved, tags, block IDs, emphasis, callouts, code, range-limited); host contract (ready, debounced changes, undo/redo via commands, history reset on load, flush before load, malformed input).
+- Swift (4): the same fixture file (14 host, 11 editor messages) decoded and re-encoded to identical JSON; invalid messages rejected.
 - Benchmark: `granite.app/Contents/MacOS/granite --editor-bench <file.md> --bench-out <json>` (needs the window visible).
 
 ## Done when
@@ -30,4 +30,9 @@ Status: **spike A built**; manual checks pending (see decision 0003). Plan refs:
 - [x] Live-preview decorations for headings, emphasis, wikilinks.
 - [x] Spike A automated gates measured (decision 0003).
 - [ ] Manual: CJK IME, drag-and-drop, VoiceOver, focus between sidebar and editor.
-- [ ] Phase 1: `[[` and `#` completion (titles from the index), embeds rendered inline, properties panel, dirty-buffer conflict banner when the watcher reports an external edit.
+- [x] Phase 1 item 4: `[[` completion (titles and aliases from the index; recent notes on an empty query; the closing `]]` is skipped over) and `#` completion (tags by use count).
+- [x] Frontmatter folds into a one-line properties summary until the cursor enters it; notes open with the cursor in the body.
+- [x] Callouts show an icon and type label instead of `> [!type]`; quote markers hide off the active line.
+- [x] Embeds render inline: note sections (`#Heading`) and blocks (`#^id`) as text, images (vault path, next to the note, `Attachments/`, then by name) as data URLs up to 8 MB; missing targets say so. Paths with `..` are refused.
+- [x] A note changed on disk applies as a minimal edit (cursor and undo kept, never echoed back); with unsent local edits the editor shows Keep mine / Take theirs.
+- [ ] Typed by hand in the app (you): `[[` and `#` completion, the banner.
