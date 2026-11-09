@@ -8,6 +8,9 @@ public enum GraniteAction: Sendable, Hashable {
     case showCapturePanel
     /// `granite://open?path=…` or `?id=…`.
     case open(path: String?, id: String?)
+    /// `granite://pdf?path=Papers/pdf/x.pdf&page=3&block=p3-ab12cd`: the PDF view at a page,
+    /// with that highlight marked.
+    case pdf(path: String, page: Int, block: String?)
 }
 
 public enum GraniteURLError: Error, Equatable, CustomStringConvertible {
@@ -66,6 +69,15 @@ public enum GraniteURL {
                 throw GraniteURLError.invalid("path must be inside the vault")
             }
             return .open(path: path, id: nil)
+        case "pdf":
+            guard let path = query["path"], path.lowercased().hasSuffix(".pdf") else { throw GraniteURLError.invalid("pdf needs a .pdf path") }
+            let parts = path.split(separator: "/")
+            guard !path.hasPrefix("/"), !parts.contains(".."), !parts.contains(where: { $0.hasPrefix(".") }) else {
+                throw GraniteURLError.invalid("path must be inside the vault")
+            }
+            let page = max(1, Int(query["page"] ?? "") ?? 1)
+            let block = query["block"].flatMap { $0.range(of: #"^[A-Za-z0-9-]{1,64}$"#, options: .regularExpression) != nil ? $0 : nil }
+            return .pdf(path: path, page: page, block: block)
         default:
             throw GraniteURLError.unknownAction(action)
         }

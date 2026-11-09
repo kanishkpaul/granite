@@ -94,6 +94,11 @@ func service(_ vault: Vault) -> CaptureService {
     @Test func openByPathOrID() throws {
         #expect(try parse("granite://open?path=Notes/A%20b.md") == .open(path: "Notes/A b.md", id: nil))
         #expect(try parse("granite://open?id=01JC9Q7Z5W3K8M2R4T6V8X0Y1A") == .open(path: nil, id: "01JC9Q7Z5W3K8M2R4T6V8X0Y1A"))
+        #expect(try parse("granite://pdf?path=Papers/pdf/doe2024dense.pdf&page=3&block=p3-ab12cd")
+                == .pdf(path: "Papers/pdf/doe2024dense.pdf", page: 3, block: "p3-ab12cd"))
+        #expect(try parse("granite://pdf?path=Papers/pdf/x.pdf&page=zero&block=%3Cscript%3E") == .pdf(path: "Papers/pdf/x.pdf", page: 1, block: nil))
+        #expect(throws: GraniteURLError.self) { try parse("granite://pdf?path=../secret.pdf") }
+        #expect(throws: GraniteURLError.self) { try parse("granite://pdf?path=Notes/a.md") }
     }
 
     @Test func rejectsHostileInput() throws {

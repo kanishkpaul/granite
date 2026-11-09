@@ -17,6 +17,8 @@ final class ShellState {
     var showMove = false
     /// "Ask your notes" (grounded Q&A).
     var showAsk = false
+    /// "Import PDF…" file picker.
+    var showImportPDF = false
     /// A question to run as soon as the Ask window opens (snapshot/debug mode).
     var pendingQuestion: String?
 }

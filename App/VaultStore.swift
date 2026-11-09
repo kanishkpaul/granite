@@ -25,6 +25,9 @@ final class VaultStore {
     var proposalTask: Task<Void, Never>?
     /// Inline related items while writing: see Related.swift.
     var related = RelatedSession()
+    /// PDF windows: the path the main window should open next, and where each should go (Papers.swift).
+    var pdfRequest: String?
+    var pdfNavigation: [String: PDFNavigation] = [:]
     private var searchTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
     private var loadedVersion = 0
@@ -232,6 +235,7 @@ final class VaultStore {
                                    msToOpen: Date().timeIntervalSince(last.at) * 1000)
         }
         openNote(hit.path, line: hit.startLine)
+        _ = openPaperPassage(path: hit.path, headingPath: hit.headingPath, text: hit.snippet)
     }
 
     struct NoVaultError: LocalizedError {
@@ -302,6 +306,8 @@ final class VaultStore {
             relatedItems(id: id, paragraph: text)
         case .relatedDecision(let target, let decision):
             relatedDecided(target: target, accepted: decision == "accepted")
+        case .openLink(let target, _, _, _) where target.contains("://"):
+            openExternal(target)
         case .openLink(let target, _, _, _):
             guard let from = openPath, let database else { return }
             if let path = try? database.resolve(linkTarget: target, from: from) {
@@ -311,6 +317,17 @@ final class VaultStore {
             }
         default:
             break
+        }
+    }
+
+    /// ⌘-clicked URLs: granite:// goes to granite's own handler; web and Zotero links open in
+    /// their apps; anything else (file:, javascript:) is ignored.
+    private func openExternal(_ text: String) {
+        guard let url = URL(string: text), let scheme = url.scheme?.lowercased() else { return }
+        switch scheme {
+        case "granite": AppModel.shared.handle(url)
+        case "http", "https", "zotero", "mailto": NSWorkspace.shared.open(url)
+        default: status = "Not opening \(scheme): links."
         }
     }
 

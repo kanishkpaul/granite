@@ -364,6 +364,13 @@ export class GraniteEditor {
   /** ⌘-click on a wikilink opens it (⌘⌥-click in a new pane), like Obsidian. */
   private handleLinkClick(event: MouseEvent, _view: EditorView): boolean {
     if (!event.metaKey) return false;
+    // ⌘-click on a URL (a Markdown link's target or an autolink): the host decides what may open.
+    const url = (event.target as HTMLElement | null)?.closest<HTMLElement>(".cm-url")?.textContent?.trim();
+    if (url && /^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+      event.preventDefault();
+      this.send({ type: "openLink", target: url, newPane: event.altKey });
+      return true;
+    }
     const element = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-target]");
     if (!element) return false;
     const target = parseTarget(element.dataset.target ?? "");

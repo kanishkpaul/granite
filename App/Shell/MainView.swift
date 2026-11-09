@@ -8,6 +8,7 @@ struct MainView: View {
     @State private var choosingFolder = false
     @State private var renameTitle = ""
     @FocusState private var searchFocused: Bool
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         NavigationSplitView {
@@ -52,6 +53,22 @@ struct MainView: View {
         .fileImporter(isPresented: $choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
             Task { await store.open(url) }
+        }
+        .fileImporter(isPresented: $shell.showImportPDF, allowedContentTypes: [.pdf], allowsMultipleSelection: true) { result in
+            guard case .success(let urls) = result else { return }
+            Task { await store.importPDFs(urls) }
+        }
+        // Drop PDFs anywhere on the window to import them as papers.
+        .dropDestination(for: URL.self) { urls, _ in
+            let pdfs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
+            guard !pdfs.isEmpty, store.vault != nil else { return false }
+            Task { await store.importPDFs(pdfs) }
+            return true
+        }
+        .onChange(of: store.pdfRequest) { _, path in
+            guard let path else { return }
+            openWindow(id: "pdf", value: path)
+            store.pdfRequest = nil
         }
         .sheet(isPresented: $shell.showSwitcher) {
             QuickSwitcher(shell: shell).environment(store)
@@ -208,6 +225,13 @@ struct InspectorView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                    }
+                }
+                if let pdf = store.openPath.flatMap({ store.pdfPath(for: $0) }) {
+                    Section("Paper") {
+                        Button("Open PDF", systemImage: "doc.richtext") { store.openPDF(pdf) }
+                        let count = store.highlights(forPDF: pdf).count
+                        if count > 0 { Text("\(count) highlight(s) in this note").foregroundStyle(.secondary) }
                     }
                 }
                 Section("Note") {

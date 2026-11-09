@@ -2,6 +2,7 @@ import CryptoKit
 import KBCapture
 import KBCore
 import KBIndex
+import KBPapers
 import SwiftUI
 
 /// granite: search, edit and capture into a Markdown vault. Keeps running in the menu bar
@@ -23,6 +24,14 @@ struct GraniteApp: App {
             }
         }
         .commands { ShellCommands(shell: AppModel.shared.shell, store: AppModel.shared.store) }
+        // One window per PDF, keyed by its vault path.
+        WindowGroup("PDF", id: "pdf", for: String.self) { $path in
+            if let path {
+                PDFReaderView(path: path)
+                    .environment(AppModel.shared.store)
+                    .frame(minWidth: 520, minHeight: 600)
+            }
+        }
         MenuBarExtra("granite", systemImage: "square.and.pencil", isInserted: .constant(bench == nil)) {
             MenuBarContent()
         }

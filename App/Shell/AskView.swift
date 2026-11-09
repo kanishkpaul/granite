@@ -117,7 +117,7 @@ struct AskView: View {
                     Text("Sources").font(.caption).foregroundStyle(.secondary)
                     ForEach(answer.sources, id: \.id) { source in
                         Button {
-                            store.openNote(source.hit.path, line: source.hit.startLine)
+                            store.openCited(source.hit, quote: nil)
                         } label: {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(source.id).font(.caption.monospaced()).foregroundStyle(.secondary)
@@ -143,7 +143,7 @@ struct AskView: View {
                 .foregroundStyle(sentence.verified ? .primary : .secondary)
                 .strikethrough(!sentence.verified, color: .secondary)
             if sentence.verified, let source {
-                Button(source.id) { store.openNote(source.hit.path, line: source.hit.startLine) }
+                Button(source.id) { store.openCited(source.hit, quote: sentence.quote) }
                     .buttonStyle(.link).font(.caption)
                     .help(sentence.quote ?? "")
             } else {

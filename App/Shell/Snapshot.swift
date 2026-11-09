@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import WebKit
 
-/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all] [--related-line N]` renders the main window
+/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all] [--related-line N] [--import-pdf file] [--pdf Papers/pdf/x.pdf:page]` renders the main window
 /// (and the editor's web view, which draws out of process) to PNGs, then quits. Lets agents check
 /// layout without screen-recording permission.
 @MainActor
@@ -14,6 +14,8 @@ enum SnapshotMode {
         let open = arguments.firstIndex(of: "--open").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let ask = arguments.firstIndex(of: "--ask").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let suggest = arguments.contains("--suggest")
+        let importPDF = arguments.firstIndex(of: "--import-pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
+        let pdfOpen = arguments.firstIndex(of: "--pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let contextLine = arguments.firstIndex(of: "--related-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
         let select = arguments.firstIndex(of: "--select").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         Task {
@@ -22,6 +24,22 @@ enum SnapshotMode {
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
             if suggest { await store.suggestLinks() }
+            if let importPDF { await store.importPDFs([URL(filePath: importPDF)]) }
+            if let pdfOpen {
+                // "Papers/pdf/x.pdf:3" opens page 3 and marks the first highlight on it, if any.
+                let parts = pdfOpen.split(separator: ":")
+                let path = String(parts[0])
+                let page = parts.count > 1 ? Int(parts[1]) ?? 1 : 1
+                let block = store.highlights(forPDF: path).first { $0.page == page }?.id
+                store.openPDF(path, page: page, block: block)
+                try? await Task.sleep(for: .seconds(3))
+                if let window = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue.hasPrefix("pdf") ?? false }),
+                   let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+                    view.cacheDisplay(in: view.bounds, to: rep)
+                    try? rep.representation(using: .png, properties: [:])?
+                        .write(to: output.deletingPathExtension().appendingPathExtension("pdf.png"))
+                }
+            }
             if let contextLine {
                 // Put the cursor at the end of that line and ask for related notes right away.
                 try? await Task.sleep(for: .seconds(2))

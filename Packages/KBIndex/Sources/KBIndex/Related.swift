@@ -87,11 +87,14 @@ public struct RelatedFinder: Sendable {
         let excluded = try await excludedPaths(for: path)
         var results = try await mentions(in: text, excluding: excluded)
         var seen = Set(results.map(\.path)).union(excluded)
+        // A paper's note and its full text share a title; the link resolves to the note either way.
+        var titles = Set(results.map { $0.title.lowercased() })
         if let vector, let vectors, results.count < limit {
             let nearest = try await vectors.nearest(vector, k: 40).filter { $0.score >= minSimilarity }
             let rows = try await chunkRows(nearest.map(\.chunk))
             for (chunk, score) in nearest {
-                guard let row = rows[chunk], !seen.contains(row.path), !Self.outOfScope(row.path, type: row.type) else { continue }
+                guard let row = rows[chunk], !seen.contains(row.path), !Self.outOfScope(row.path, type: row.type),
+                      titles.insert(row.title.lowercased()).inserted else { continue }
                 seen.insert(row.path)
                 results.append(RelatedCandidate(path: row.path, title: row.title, reason: .similar, score: Double(score),
                                                 headingPath: row.headingPath, snippet: String(row.text.prefix(200)),
@@ -243,7 +246,7 @@ public struct SeeAlsoJob: Sendable {
 
     /// Notes worth proposing for: not AI output, not captures waiting in Inbox/, not private.
     public static func eligible(path: String, type: String, aiLabel: String) -> Bool {
-        !path.hasPrefix("AI/") && !path.hasPrefix("Inbox/") && aiLabel != AILabel.none.rawValue
+        !path.hasPrefix("AI/") && !path.hasPrefix("Inbox/") && !path.hasPrefix("Papers/text/") && aiLabel != AILabel.none.rawValue
             && !["proposal", "digest", "synthesis"].contains(type)
     }
 

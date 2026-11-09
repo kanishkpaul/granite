@@ -23,6 +23,8 @@ packages:
     path: Packages/KBCapture
   KBGit:
     path: Packages/KBGit
+  KBPapers:
+    path: Packages/KBPapers
   KBAI:
     path: Packages/KBAI
   KBAIMLX:
@@ -51,6 +53,7 @@ targets:
       - package: KBIndex
       - package: KBCapture
       - package: KBGit
+      - package: KBPapers
       - package: KBAI
       - package: KBAIMLX
       - package: KeyboardShortcuts

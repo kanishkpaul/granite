@@ -154,3 +154,16 @@ describe("external changes", () => {
     expect(await second).toMatchObject({ kind: "image" });
   });
 });
+
+describe("⌘-click on URLs", () => {
+  it("sends web and granite URLs to the host", () => {
+    const sent: EditorMessage[] = [];
+    const editor = new GraniteEditor({ parent: document.createElement("div"), fallback: (m) => sent.push(m) });
+    const text = "See [the PDF](granite://pdf?path=Papers/pdf/x.pdf&page=3) now.";
+    editor.receive({ type: "load", path: "Papers/x.md", text, version: 1, cursor: text.length });
+    const url = editor.view.dom.querySelector<HTMLElement>(".cm-url");
+    expect(url?.textContent).toBe("granite://pdf?path=Papers/pdf/x.pdf&page=3");
+    url?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, metaKey: true }));
+    expect(sent).toContainEqual({ type: "openLink", target: "granite://pdf?path=Papers/pdf/x.pdf&page=3", newPane: false });
+  });
+});

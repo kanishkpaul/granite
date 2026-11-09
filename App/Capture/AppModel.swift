@@ -50,6 +50,9 @@ final class AppModel {
             case .open(let path, let id):
                 showMainWindow()
                 if let path { store.openNote(path) } else if let id { store.openNote(id: id) }
+            case .pdf(let path, let page, let block):
+                showMainWindow()
+                store.openPDF(path, page: page, block: block)
             }
         } catch {
             NSLog("granite: ignored URL \(url.absoluteString.prefix(200)): \(error)")
