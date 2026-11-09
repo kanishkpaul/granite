@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-phase%200%20%C2%B7%20planning-6A4FD4?style=flat-square" alt="Status: phase 0, planning">
+  <img src="https://img.shields.io/badge/status-phase%200%20%C2%B7%20spikes-6A4FD4?style=flat-square" alt="Status: phase 0, spikes">
   <img src="https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/macOS-27-1d1d1f?style=flat-square&logo=apple&logoColor=white" alt="macOS 27">
   <img src="https://img.shields.io/badge/local--first-Markdown%20%2B%20YAML-0E7464?style=flat-square" alt="Local-first: Markdown + YAML">
@@ -160,13 +160,32 @@ Every phase has a "done when" test in the [master plan](docs/MASTER-PLAN.md#8-ph
 granite/
   README.md
   CLAUDE.md                 rules for coding agents
+  project.yml               XcodeGen spec (run `xcodegen`; the .xcodeproj is not committed)
+  App/                      thin SwiftUI shell: open a vault, index, search
+  Packages/
+    KBCore/                 vault model, frontmatter, Obsidian-syntax parser, policy, SafeWriter
+    KBIndex/                GRDB index.sqlite, reconcile, FTS5 search, backlinks
+    KBTestSupport/          deterministic fixture-vault generator
+  Tools/granite-cli/        fixture · index · search · titles · backlinks · stats · eval · parse
+  scripts/test-all.sh       swift test for every package (+ --app to build the app)
   docs/
     MASTER-PLAN.md          architecture, schemas, AI layer, roadmap, first 10 days
+    specs/                  one spec per feature
+    decisions/              spike outcomes and design decisions
     research/               three research reports, raw notes, illustrated report
   assets/                   banner art
 ```
 
-Phase 0 adds the Xcode project (generated with XcodeGen), the Swift packages (`KBCore`, `KBIndex`, `KBReview`, `KBZotero`, `KBCapture`, `KBAI`, `KBCode`), the `Editor/` web bundle and the `Tools/` executables.
+Try it on a synthetic 50k-note vault:
+
+```bash
+cd Tools/granite-cli && swift build -c release
+.build/release/granite-cli fixture --notes 50000 --out /tmp/g50k
+.build/release/granite-cli index --vault /tmp/g50k --db /tmp/g50k-index/index.sqlite
+.build/release/granite-cli search --vault /tmp/g50k --db /tmp/g50k-index/index.sqlite some words
+```
+
+The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBAI`, `KBCode`) and the `Editor/` web bundle arrive with their phases.
 
 ## Research
 

@@ -1,0 +1,2 @@
+# Golden parser fixtures must keep their exact bytes (CRLF, BOM).
+Packages/*/Tests/**/Golden/** -text

@@ -2,7 +2,9 @@
 
 granite is a personal, native macOS knowledge base. Read `docs/MASTER-PLAN.md` before any feature work; it holds the architecture, schemas, AI layer and roadmap. `docs/research/` holds the research behind it (`[R …]` tags in the plan point there).
 
-Current phase: **0, spikes** (see plan §8). No app code exists yet.
+Current phase: **0, spikes** (see plan §8). Built: `KBCore`, `KBIndex` (FTS), `KBTestSupport`, `Tools/granite-cli`, a thin `App/` shell. Spike B part 1 passed (`docs/decisions/0001`); spikes A, C, D and B part 2 are open.
+
+Run `scripts/test-all.sh` (add `--app` to also build the Xcode project) before calling work done.
 
 ## Code
 - Swift 6, strict concurrency. `@Observable` + `@MainActor` models, actors for background work, async/await only. Never `ObservableObject`, Combine, `DispatchQueue` or `Timer.scheduledTimer`.
