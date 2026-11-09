@@ -126,6 +126,27 @@ import Testing
         #expect(written == "hello")
     }
 
+    @Test func movesWithoutOverwriting() async throws {
+        let vault = try tempVault()
+        let writer = SafeWriter(vault: vault)
+        try await writer.write("a", to: "Inbox/a.md", as: .user)
+        try await writer.write("b", to: "Notes/b.md", as: .user)
+        try await writer.move(from: "Inbox/a.md", to: "Archive/Inbox/a.md", as: .user)
+        #expect(try String(contentsOf: vault.url(for: "Archive/Inbox/a.md"), encoding: .utf8) == "a")
+        #expect(!FileManager.default.fileExists(atPath: vault.url(for: "Inbox/a.md").path(percentEncoded: false)))
+        await #expect(throws: SafeWriteError.destinationExists("Notes/b.md")) {
+            try await writer.move(from: "Archive/Inbox/a.md", to: "Notes/b.md", as: .user)
+        }
+        await #expect(throws: SafeWriteError.missing("Inbox/gone.md")) {
+            try await writer.move(from: "Inbox/gone.md", to: "Notes/x.md", as: .user)
+        }
+        await #expect(throws: SafeWriteError.aiWriteOutsideAI("Notes/b.md")) {
+            try await writer.move(from: "Notes/b.md", to: "AI/b.md", as: .ai)
+        }
+        try await writer.move(from: "Notes/b.md", to: "Notes/B.md", as: .user)
+        #expect(FileManager.default.fileExists(atPath: vault.url(for: "Notes/B.md").path(percentEncoded: false)))
+    }
+
     @Test func scansMarkdownSkippingHiddenFolders() throws {
         let vault = try tempVault()
         for path in ["Notes/a.md", "Notes/deep/b.md", ".obsidian/c.md", ".git/d.md", "Notes/e.txt", "root.md"] {

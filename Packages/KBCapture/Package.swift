@@ -9,10 +9,11 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../KBCore"),
+        .package(path: "../KBIndex"),
     ],
     targets: [
-        .target(name: "KBCapture", dependencies: ["KBCore"]),
-        .testTarget(name: "KBCaptureTests", dependencies: ["KBCapture"]),
+        .target(name: "KBCapture", dependencies: ["KBCore", "KBIndex"]),
+        .testTarget(name: "KBCaptureTests", dependencies: ["KBCapture", "KBIndex"]),
     ],
     swiftLanguageModes: [.v6]
 )

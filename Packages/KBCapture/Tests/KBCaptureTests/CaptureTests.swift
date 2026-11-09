@@ -1,5 +1,6 @@
 import Foundation
 import KBCore
+import KBIndex
 import Testing
 @testable import KBCapture
 
@@ -169,5 +170,69 @@ func service(_ vault: Vault) -> CaptureService {
         let note = NoteParser.parse(data: try Data(contentsOf: vault.url(for: "Daily/2026-11-09.md")), path: "Daily/2026-11-09.md",
                                     policy: .builtIn)
         #expect(note.type == .daily)
+    }
+}
+
+@Suite struct InboxQueueTests {
+    /// Vault with captures aged 3, 20 and 90 days relative to `fixedDate`.
+    func setup() async throws -> (Vault, InboxQueue, IndexDatabase) {
+        let vault = try tempVault()
+        let writer = SafeWriter(vault: vault)
+        func put(_ path: String, _ text: String) throws {
+            let url = vault.url(for: path)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: url)
+        }
+        try put("Inbox/2026-11-06 1000.md", "---\nkind: capture\n---\nfresh thought\n")
+        try put("Inbox/2026-10-20 0900.md", "---\nkind: capture\ncreated: 2026-10-20T09:00:00+05:30\nwhy: for the essay\n---\nolder thought about [[Target]]\n")
+        try put("Inbox/ancient.md", "---\ncreated: 2026-08-01\n---\nvery old\n")
+        try put("Notes/Target.md", "# Target\nexisting text\n")
+        try put("Notes/Ref.md", "links to [[2026-10-20 0900]]\n")
+        let database = try IndexDatabase(url: vault.root.deletingLastPathComponent().appending(path: "idx-\(UUID().uuidString)/index.sqlite"))
+        let indexer = Indexer(database: database, vault: vault, policy: .builtIn)
+        _ = try await indexer.reconcile()
+        let queue = InboxQueue(indexer: indexer, writer: writer, renamer: RenameService(indexer: indexer, writer: writer),
+                               timeZone: kolkata, now: { fixedDate })
+        return (vault, queue, database)
+    }
+
+    @Test func agesAndQueue() async throws {
+        let (_, queue, _) = try await setup()
+        let items = await queue.items()
+        #expect(items.map(\.title) == ["ancient", "2026-10-20 0900", "2026-11-06 1000"])
+        #expect(items.map(\.ageDays) == [100, 20, 3])
+        #expect(items[1].why == "for the essay")
+        #expect(items[1].preview == "older thought about [[Target]]")
+        #expect(await queue.decideQueue().map(\.title) == ["ancient", "2026-10-20 0900"])
+        #expect(await queue.medianAgeDays() == 20)
+    }
+
+    @Test func makeNoteRewritesLinksAndChangesKind() async throws {
+        let (vault, queue, database) = try await setup()
+        let path = try await queue.makeNote("Inbox/2026-10-20 0900.md", title: "Older thought")
+        #expect(path == "Notes/Older thought.md")
+        let text = try String(contentsOf: vault.url(for: path), encoding: .utf8)
+        #expect(text.contains("kind: evergreen"))
+        #expect(try String(contentsOf: vault.url(for: "Notes/Ref.md"), encoding: .utf8) == "links to [[Older thought]]\n")
+        #expect(try database.backlinks(to: path).map(\.path) == ["Notes/Ref.md"])
+    }
+
+    @Test func appendThenArchive() async throws {
+        let (vault, queue, _) = try await setup()
+        try await queue.append("Inbox/2026-10-20 0900.md", to: "Notes/Target.md")
+        let target = try String(contentsOf: vault.url(for: "Notes/Target.md"), encoding: .utf8)
+        #expect(target == "# Target\nexisting text\n\n## From inbox, 2026-10-20\n\nolder thought about [[Target]]\n")
+        #expect(FileManager.default.fileExists(atPath: vault.url(for: "Archive/Inbox/2026-10-20 0900.md").path(percentEncoded: false)))
+        #expect(await queue.items().count == 2)
+    }
+
+    @Test func bankruptcyArchivesOnlyOldItems() async throws {
+        let (vault, queue, database) = try await setup()
+        let archived = try await queue.bankruptcy()
+        #expect(archived == ["Archive/Inbox/ancient.md"])
+        #expect(await queue.items().map(\.title) == ["2026-10-20 0900", "2026-11-06 1000"])
+        #expect(try database.note(path: "Archive/Inbox/ancient.md") != nil)
+        try Data("dup".utf8).write(to: vault.url(for: "Inbox/ancient.md"))
+        #expect(try await queue.archive("Inbox/ancient.md") == "Archive/Inbox/ancient 2.md")
     }
 }

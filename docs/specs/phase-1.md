@@ -15,7 +15,7 @@ CM6 editor with live preview and typed bridge · FTS5 search (p95 1.8 ms on 50k 
 | 2 ✓ | Git auto-commit + deletion alarm (`GitService`) | `git.md` | Commits 5 min after the last change and on quit; > 20 staged deletions or any 0-byte `.md` pauses commits and alerts |
 | 3 ✓ | App shell: sidebar (folders), note list, backlinks pane, quick switcher (⌘O), command palette (⌘K), daily notes (⌘D), properties panel | `app-shell.md` | Every daily action works without Finder or Obsidian |
 | 4 ✓ | Editor: `[[`/`#` completion, inline embeds, external-change banner, folded frontmatter, callouts | `editor.md` | Linking a note never needs the mouse |
-| 5 | Inbox decide queue: items > 14 days ask make-note / link / archive; bankruptcy moves > 60 days to `Archive/` | `capture.md` | Inbox median age < 14 days |
+| 5 ✓ | Inbox decide queue: items > 14 days ask make-note / link / archive; bankruptcy moves > 60 days to `Archive/` | `capture.md` | Inbox median age < 14 days |
 
 ## Phase 1 gates (plan §8)
 - [ ] 7 consecutive days in granite.

@@ -21,9 +21,9 @@ public struct ReconcileReport: Sendable, CustomStringConvertible {
 /// Parsing runs in parallel; writes go in batched transactions; object rowids stay stable across
 /// re-parses so links from other notes stay resolved.
 public actor Indexer {
-    public let database: IndexDatabase
-    public let vault: Vault
-    public let policy: VaultPolicy
+    nonisolated public let database: IndexDatabase
+    nonisolated public let vault: Vault
+    nonisolated public let policy: VaultPolicy
     let batchSize: Int
 
     public init(database: IndexDatabase, vault: Vault, policy: VaultPolicy, batchSize: Int = 800) {

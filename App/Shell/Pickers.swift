@@ -137,6 +137,9 @@ struct CommandPalette: View {
             Entry(id: "search", title: "Search notes", detail: "⌘F") { shell.focusSearch += 1 },
             Entry(id: "inspector", title: "Toggle inspector", detail: "⌥⌘I") { shell.showInspector.toggle() },
             Entry(id: "wikilink", title: "Copy link to this note", detail: "[[…]]") { store.copyWikilink() },
+            Entry(id: "rename", title: "Rename note…", detail: "updates links") { shell.showRename = true },
+            Entry(id: "move", title: "Move note to folder…", detail: "") { shell.showMove = true },
+            Entry(id: "inbox", title: "Go to Inbox", detail: "\(store.inboxCount)") { store.selection = .inbox },
             Entry(id: "reveal", title: "Reveal note in Finder", detail: "") { store.revealInFinder() },
             Entry(id: "commit", title: "Commit vault to git now", detail: git.isRepository ? "" : "not a git repository") {
                 Task { await git.commit() }

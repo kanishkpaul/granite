@@ -11,4 +11,8 @@ final class ShellState {
     var focusSearch = 0
     /// When set, the switcher is in "new note" mode: ↩ creates rather than opens.
     var switcherCreates = false
+    /// Rename prompt for the open note.
+    var showRename = false
+    /// Folder picker for moving the open note.
+    var showMove = false
 }

@@ -14,6 +14,8 @@ public enum SafeWriteError: Error, Equatable, CustomStringConvertible {
     case forbiddenPath(String)
     case aiWriteOutsideAI(String)
     case coordination(String)
+    case destinationExists(String)
+    case missing(String)
 
     public var description: String {
         switch self {
@@ -21,6 +23,8 @@ public enum SafeWriteError: Error, Equatable, CustomStringConvertible {
         case .forbiddenPath(let path): "granite never writes here: \(path)"
         case .aiWriteOutsideAI(let path): "AI may only write under AI/; propose a change instead: \(path)"
         case .coordination(let message): "file coordination failed: \(message)"
+        case .destinationExists(let path): "a file already exists at \(path)"
+        case .missing(let path): "no file at \(path)"
         }
     }
 }
@@ -53,6 +57,37 @@ public actor SafeWriter {
         if let coordinationError { throw SafeWriteError.coordination(coordinationError.localizedDescription) }
         if let writeError { throw writeError }
         remember(path: clean, hash: Data(SHA256.hash(data: data)))
+    }
+
+    /// Moves or renames a file inside the vault. Coordinated, creates folders, never overwrites.
+    public func move(from source: String, to destination: String, as role: WriterRole) throws {
+        let from = try validate(source, role: role)
+        let to = try validate(destination, role: role)
+        let fromURL = vault.url(for: from)
+        let toURL = vault.url(for: to)
+        let manager = FileManager.default
+        guard manager.fileExists(atPath: fromURL.path(percentEncoded: false)) else { throw SafeWriteError.missing(from) }
+        // A case-only rename ("note.md" → "Note.md") is the same file on a case-insensitive volume.
+        let caseOnly = from.lowercased() == to.lowercased() && from != to
+        guard caseOnly || !manager.fileExists(atPath: toURL.path(percentEncoded: false)) else {
+            throw SafeWriteError.destinationExists(to)
+        }
+        try manager.createDirectory(at: toURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+
+        var coordinationError: NSError?
+        var moveError: Error?
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        coordinator.coordinate(writingItemAt: fromURL, options: .forMoving, writingItemAt: toURL, options: .forReplacing,
+                               error: &coordinationError) { sourceURL, targetURL in
+            do {
+                try manager.moveItem(at: sourceURL, to: targetURL)
+                coordinator.item(at: sourceURL, didMoveTo: targetURL)
+            } catch {
+                moveError = error
+            }
+        }
+        if let coordinationError { throw SafeWriteError.coordination(coordinationError.localizedDescription) }
+        if let moveError { throw moveError }
     }
 
     public func write(_ text: String, to path: String, as role: WriterRole) throws {

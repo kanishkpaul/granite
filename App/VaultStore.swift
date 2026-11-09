@@ -25,6 +25,9 @@ final class VaultStore {
     private var cursor = 0
     private(set) var captureService: CaptureService?
     private(set) var noteFactory: NoteFactory?
+    private var renamer: RenameService?
+    private var inbox: InboxQueue?
+    private(set) var inboxItems: [InboxItem] = []
     private var policy = VaultPolicy.builtIn
 
     // MARK: Shell state
@@ -87,6 +90,9 @@ final class VaultStore {
             let indexer = Indexer(database: database, vault: vault, policy: policy)
             self.database = database
             self.indexer = indexer
+            let renamer = RenameService(indexer: indexer, writer: writer)
+            self.renamer = renamer
+            inbox = InboxQueue(indexer: indexer, writer: writer, renamer: renamer)
             // An existing index is usable right away; the watcher then replays only what changed
             // while granite was closed, which may be nothing (so no update would arrive).
             if !database.isFresh {
@@ -254,6 +260,91 @@ final class VaultStore {
         folders = (try? database.folders()) ?? []
         inboxCount = folders.first { $0.path == "Inbox" }?.noteCount ?? 0
         refreshList()
+        Task { await refreshInbox() }
+    }
+
+    func refreshInbox() async {
+        inboxItems = await inbox?.items() ?? []
+    }
+
+    // MARK: Inbox decisions, rename, move
+
+    private func afterMove(from old: String, to new: String) async {
+        refreshLists()
+        await refreshInbox()
+        if openPath == old { openNote(new) }
+    }
+
+    func inboxMakeNote(_ item: InboxItem, title: String) async {
+        guard let inbox else { return }
+        do {
+            let path = try await inbox.makeNote(item.path, title: title)
+            status = "Made \(path)"
+            await afterMove(from: item.path, to: path)
+        } catch {
+            status = "Could not make a note: \(error)"
+        }
+    }
+
+    func inboxAppend(_ item: InboxItem, to note: String) async {
+        guard let inbox else { return }
+        do {
+            try await inbox.append(item.path, to: note)
+            status = "Appended to \(note)"
+            await afterMove(from: item.path, to: note)
+        } catch {
+            status = "Could not append: \(error)"
+        }
+    }
+
+    func inboxArchive(_ item: InboxItem) async {
+        guard let inbox else { return }
+        do {
+            let path = try await inbox.archive(item.path)
+            status = "Archived to \(path)"
+            await afterMove(from: item.path, to: path)
+        } catch {
+            status = "Could not archive: \(error)"
+        }
+    }
+
+    func inboxBankruptcy() async {
+        guard let inbox else { return }
+        do {
+            let archived = try await inbox.bankruptcy()
+            status = "Archived \(archived.count) old captures"
+            refreshLists()
+            await refreshInbox()
+        } catch {
+            status = "Bankruptcy failed: \(error)"
+        }
+    }
+
+    /// Renames the open note in place; every link to it is rewritten.
+    func renameOpenNote(to title: String) async {
+        guard let path = openPath else { return }
+        let folder = Self.folder(of: path)
+        let stem = NoteFactory.fileName(for: title)
+        await move(path, to: folder.isEmpty ? "\(stem).md" : "\(folder)/\(stem).md")
+    }
+
+    /// Moves the open note to another folder, keeping its name; links are rewritten where needed.
+    func moveOpenNote(toFolder folder: String) async {
+        guard let path = openPath else { return }
+        let name = (path as NSString).lastPathComponent
+        await move(path, to: folder.isEmpty ? name : "\(folder)/\(name)")
+    }
+
+    private func move(_ path: String, to destination: String) async {
+        guard let renamer, destination != path else { return }
+        do {
+            // Save pending edits first so the moved file has them.
+            let report = try await renamer.rename(from: path, to: destination)
+            status = "Moved to \(destination); rewrote \(report.rewrittenLinks) link(s) in \(report.rewrittenFiles.count) note(s)"
+            await afterMove(from: path, to: destination)
+        } catch {
+            status = "Could not move: \(error)"
+        }
     }
 
     private func refreshList() {

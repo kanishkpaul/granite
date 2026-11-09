@@ -8,6 +8,12 @@ public struct Line: Sendable, Hashable {
     public let index: Int
     /// The terminator that followed this line: "\n", "\r\n" or "" for the last line.
     public let terminator: String
+
+    public init(text: String, index: Int, terminator: String) {
+        self.text = text
+        self.index = index
+        self.terminator = terminator
+    }
 }
 
 public enum Lines {

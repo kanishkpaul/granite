@@ -6,6 +6,7 @@ struct MainView: View {
     @Environment(VaultStore.self) private var store
     @Bindable var shell: ShellState
     @State private var choosingFolder = false
+    @State private var renameTitle = ""
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -58,6 +59,19 @@ struct MainView: View {
         .sheet(isPresented: $shell.showPalette) {
             CommandPalette(shell: shell, chooseVault: { choosingFolder = true }).environment(store)
         }
+        .sheet(isPresented: $shell.showMove) {
+            MovePicker().environment(store)
+        }
+        .alert("Rename note", isPresented: $shell.showRename) {
+            TextField("Title", text: $renameTitle)
+            Button("Rename") { Task { await store.renameOpenNote(to: renameTitle) } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Links to this note are updated everywhere.")
+        }
+        .onChange(of: shell.showRename) { _, showing in
+            if showing, let path = store.openPath { renameTitle = NoteParser.title(for: path) }
+        }
     }
 }
 
@@ -106,7 +120,9 @@ struct NoteListView: View {
 
     var body: some View {
         Group {
-            if query.trimmingCharacters(in: .whitespaces).isEmpty {
+            if query.trimmingCharacters(in: .whitespaces).isEmpty && store.selection == .inbox {
+                InboxView()
+            } else if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 List(store.listed, id: \.path) { note in
                     row(title: note.title, detail: folder(of: note.path), trailing: note.modified.formatted(.relative(presentation: .named)),
                         path: note.path)

@@ -25,6 +25,10 @@ struct ShellCommands: Commands {
                 .keyboardShortcut("l", modifiers: [.command, .shift])
             Button("Reveal in Finder") { store.revealInFinder() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
+            Button("Rename Note…") { shell.showRename = true }
+                .keyboardShortcut("r", modifiers: [.command, .option])
+            Button("Move Note to Folder…") { shell.showMove = true }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
         }
         CommandGroup(after: .sidebar) {
             Button("Toggle Inspector") { shell.showInspector.toggle() }
