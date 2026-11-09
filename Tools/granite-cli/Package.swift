@@ -12,13 +12,14 @@ let package = Package(
         .package(path: "../../Packages/KBIndex"),
         .package(path: "../../Packages/KBTestSupport"),
         .package(path: "../../Packages/KBAI"),
+        .package(path: "../../Packages/KBGit"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.8.0"),
     ],
     targets: [
         .executableTarget(
             name: "granite-cli",
             dependencies: [
-                "KBCore", "KBIndex", "KBTestSupport", "KBAI",
+                "KBCore", "KBIndex", "KBTestSupport", "KBAI", "KBGit",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),

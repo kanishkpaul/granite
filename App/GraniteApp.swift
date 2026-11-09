@@ -40,6 +40,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Commit pending vault changes before quitting (bounded to 10 s).
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard BenchArguments(ProcessInfo.processInfo.arguments) == nil else { return .terminateNow }
+        Task { @MainActor in
+            await AppModel.shared.git.commitBeforeQuit()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
             guard BenchArguments(ProcessInfo.processInfo.arguments) == nil else { return }
@@ -68,6 +78,9 @@ final class VaultStore {
     private var editorHash: Data?
     private var cursor = 0
     private(set) var captureService: CaptureService?
+    /// Hooks for app-level services (auto-commit) that follow the vault.
+    var onVaultOpened: ((URL) -> Void)?
+    var onVaultChanged: (() -> Void)?
 
     static let vaultKey = "granite.vaultPath"
 
@@ -91,6 +104,7 @@ final class VaultStore {
         self.writer = writer
         // Capture works as soon as a vault is known: it needs no index.
         captureService = CaptureService(vault: vault, writer: writer)
+        onVaultOpened?(vault.root)
         isIndexing = true
         status = "Indexing \(url.lastPathComponent)…"
         syncTask?.cancel()
@@ -118,6 +132,7 @@ final class VaultStore {
 
     private func applied(_ update: SyncUpdate) {
         isIndexing = false
+        if update.kind == .fullReconcile || !update.paths.isEmpty { onVaultChanged?() }
         status = update.kind == .fullReconcile ? update.report.description : "Updated \(update.paths.count) note(s)"
         if let path = openPath, update.kind == .fullReconcile || update.paths.contains(path) {
             reloadIfChangedOnDisk(path)

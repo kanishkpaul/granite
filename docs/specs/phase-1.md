@@ -12,7 +12,7 @@ CM6 editor with live preview and typed bridge · FTS5 search (p95 1.8 ms on 50k 
 | # | Piece | Spec | Done when |
 |---|---|---|---|
 | 1 ✓ | Quick capture: hotkey panel, menu bar, `granite://` URLs, App Intent, Inbox with a "why" line | `capture.md` | You capture something real through the hotkey; the panel appears in < 300 ms |
-| 2 | Git auto-commit + deletion alarm (`GitService`) | `git.md` (to write) | Commits 5 min after the last change and on quit; > 20 staged deletions or any 0-byte `.md` pauses commits and alerts |
+| 2 ✓ | Git auto-commit + deletion alarm (`GitService`) | `git.md` | Commits 5 min after the last change and on quit; > 20 staged deletions or any 0-byte `.md` pauses commits and alerts |
 | 3 | App shell: sidebar (folders), note list, backlinks pane, quick switcher (⌘O), command palette (⌘K), daily notes (⌘D), properties panel | `app-shell.md` (to write) | Every daily action works without Finder or Obsidian |
 | 4 | Editor: `[[`/`#` completion, inline embeds, external-change banner | `editor.md` | Linking a note never needs the mouse |
 | 5 | Inbox decide queue: items > 14 days ask make-note / link / archive; bankruptcy moves > 60 days to `Archive/` | `capture.md` | Inbox median age < 14 days |
@@ -27,5 +27,5 @@ CM6 editor with live preview and typed bridge · FTS5 search (p95 1.8 ms on 50k 
 Hybrid search in the app, proposals, Zotero (deferred, 0005), FSRS, digests, Claude/PCC routes.
 
 ## Prerequisites (you)
-- `~/Vault` under git with a pushed private remote before granite writes to it daily (plan §10). Until item 2 ships, use `~/VaultCopy`.
+- `~/Vault` under git with a pushed private remote before granite writes to it daily (plan §10). granite can now initialize git (Settings) and commits and pushes automatically; add the private remote yourself.
 - 20 re-find queries in `.granite/eval/retrieval.jsonl`.

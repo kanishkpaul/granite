@@ -167,10 +167,11 @@ granite/
     KBCore/                 vault model, frontmatter, Obsidian-syntax parser, policy, SafeWriter
     KBIndex/                GRDB index.sqlite, reconcile, FSEvents watcher, FTS5 + vector hybrid search
     KBCapture/              Inbox capture service and granite:// URL parsing
+    KBGit/                  git auto-commit, deletion alarm, push
     KBTestSupport/          deterministic fixture-vault generator
     KBAI/                   model routing (so far: which routes work on this Mac)
     KBAIMLX/                local EmbeddingGemma embedder and Qwen3 reranker (MLX; build with xcodebuild)
-  Tools/granite-cli/        fixture · index · watch · search · titles · backlinks · stats · eval · parse · models
+  Tools/granite-cli/        fixture · index · watch · search · titles · backlinks · stats · eval · parse · models · git
   Tools/granite-mcp/        read-only MCP server for Claude Code and Claude Desktop
   Tools/granite-ml/         embed · hybrid search · retrieval benchmarks (MLX)
   Tests/AppTests/           app tests (editor bridge round-trip)

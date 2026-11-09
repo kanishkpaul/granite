@@ -15,9 +15,12 @@ final class AppModel {
 
     let store = VaultStore()
     let capture: CaptureController
+    let git = AutoCommitter()
 
     private init() {
         capture = CaptureController(store: store)
+        store.onVaultOpened = { [git] root in Task { await git.configure(root: root) } }
+        store.onVaultChanged = { [git] in git.vaultChanged() }
     }
 
     /// Called once at launch (not in benchmark mode).

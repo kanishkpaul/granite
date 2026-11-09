@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import KBAI
+import KBGit
 import KBCore
 import KBIndex
 import KBTestSupport
@@ -11,7 +12,7 @@ struct GraniteCLI: AsyncParsableCommand {
         commandName: "granite-cli",
         abstract: "Index, search and inspect a granite vault from the terminal.",
         subcommands: [Fixture.self, Index.self, Search.self, Titles.self, Backlinks.self, Stats.self, Eval.self,
-                      Parse.self, Models.self, Watch.self]
+                      Parse.self, Models.self, Watch.self, Git.self]
     )
 }
 
@@ -261,6 +262,45 @@ struct Watch: AsyncParsableCommand {
                 let shown = update.paths.prefix(5).joined(separator: ", ") + (update.paths.count > 5 ? ", …" : "")
                 print("\(stamp) \(update.report)  [\(shown)]")
             }
+        }
+    }
+}
+
+struct Git: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "The vault's git safety net: status, commit (with the deletion alarm), push, init.")
+
+    @Option(help: "Vault folder.") var vault: String
+    @Argument(help: "status, commit, push or init.") var action = "status"
+    @Flag(help: "With commit: commit even if the deletion alarm fires.") var allowAlarm = false
+
+    func run() async throws {
+        let service = GitService(root: URL(filePath: (vault as NSString).expandingTildeInPath))
+        switch action {
+        case "status":
+            let state = try await service.state()
+            guard state.isRepository else { print("not a git repository (granite-cli git init)"); return }
+            print("branch \(state.branch ?? "?")  remotes \(state.remotes.joined(separator: ", "))  pending \(state.pending.count)")
+            if let busy = state.busy { print("busy: \(busy)") }
+            for change in state.pending.prefix(20) { print("  \(change.kind.rawValue.padding(toLength: 8, withPad: " ", startingAt: 0)) \(change.path)") }
+        case "commit":
+            print(Self.describe(try await service.autoCommit(allowAlarm: allowAlarm)))
+        case "push":
+            print(try await service.push())
+        case "init":
+            print(Self.describe(try await service.initialize()))
+        default:
+            throw ValidationError("unknown action \(action): use status, commit, push or init")
+        }
+    }
+
+    static func describe(_ outcome: CommitOutcome) -> String {
+        switch outcome {
+        case .committed(let sha, let summary): "committed \(sha): \(summary)"
+        case .nothingToCommit: "nothing to commit"
+        case .paused(let alarm): "PAUSED: \(alarm.reason). Review, then rerun with --allow-alarm if intended."
+        case .skipped(let reason): "skipped: \(reason)"
+        case .notARepository: "not a git repository"
         }
     }
 }
