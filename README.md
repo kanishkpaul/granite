@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-phase%200%20%C2%B7%20spikes-6A4FD4?style=flat-square" alt="Status: phase 0, spikes">
+  <img src="https://img.shields.io/badge/status-phase%201%20%C2%B7%20daily%20driver-6A4FD4?style=flat-square" alt="Status: phase 1, daily driver">
   <img src="https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/macOS-27-1d1d1f?style=flat-square&logo=apple&logoColor=white" alt="macOS 27">
   <img src="https://img.shields.io/badge/local--first-Markdown%20%2B%20YAML-0E7464?style=flat-square" alt="Local-first: Markdown + YAML">
@@ -161,11 +161,12 @@ granite/
   README.md
   CLAUDE.md                 rules for coding agents
   project.yml               XcodeGen spec (run `xcodegen`; the .xcodeproj is not committed)
-  App/                      thin SwiftUI shell: open a vault, search, edit (Bridges/ hosts the editor)
+  App/                      SwiftUI app: search, edit, menu-bar capture (Bridges/ hosts the editor, Capture/ the panel)
   Editor/                   CodeMirror 6 editor (TypeScript, Vite, Vitest); builds into App/Resources/editor
   Packages/
     KBCore/                 vault model, frontmatter, Obsidian-syntax parser, policy, SafeWriter
     KBIndex/                GRDB index.sqlite, reconcile, FSEvents watcher, FTS5 + vector hybrid search
+    KBCapture/              Inbox capture service and granite:// URL parsing
     KBTestSupport/          deterministic fixture-vault generator
     KBAI/                   model routing (so far: which routes work on this Mac)
     KBAIMLX/                local EmbeddingGemma embedder and Qwen3 reranker (MLX; build with xcodebuild)

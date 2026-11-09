@@ -181,7 +181,7 @@ public enum FrontmatterEditor {
     }
 
     /// Quotes a scalar only when plain YAML would misread it.
-    static func yamlScalar(_ value: String) -> String {
+    public static func yamlScalar(_ value: String) -> String {
         let needsQuotes = value.isEmpty
             || value.contains(": ") || value.contains(" #")
             || value.first.map { "[]{}&*!|>'\"%@`#,?-:".contains($0) || $0 == " " } ?? false

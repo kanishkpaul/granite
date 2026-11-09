@@ -1,24 +1,49 @@
 import CryptoKit
+import KBCapture
 import KBCore
 import KBIndex
 import SwiftUI
 
-/// Phase 0 shell: open a vault, search it, edit notes in the CodeMirror editor.
+/// granite: search, edit and capture into a Markdown vault. Keeps running in the menu bar
+/// when its window closes, so the capture hotkey always works.
 /// `--editor-bench <file> [--bench-out <json>]` runs the spike A benchmark and quits.
 @main
 struct GraniteApp: App {
-    @State private var store = VaultStore()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     private let bench = BenchArguments(ProcessInfo.processInfo.arguments)
 
     var body: some Scene {
-        WindowGroup("granite") {
+        WindowGroup("granite", id: "main") {
             if let bench {
                 EditorBenchView(arguments: bench)
             } else {
                 MainView()
-                    .environment(store)
+                    .environment(AppModel.shared.store)
                     .frame(minWidth: 820, minHeight: 520)
             }
+        }
+        MenuBarExtra("granite", systemImage: "square.and.pencil", isInserted: .constant(bench == nil)) {
+            MenuBarContent()
+        }
+        Settings {
+            SettingsView().environment(AppModel.shared.store)
+        }
+    }
+}
+
+/// Receives `granite://` URLs (AppKit delivers them to the delegate, not to a scene,
+/// so no new window opens for a capture from a bookmarklet or another app).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func application(_ application: NSApplication, open urls: [URL]) {
+        MainActor.assumeIsolated {
+            for url in urls { AppModel.shared.handle(url) }
+        }
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            guard BenchArguments(ProcessInfo.processInfo.arguments) == nil else { return }
+            AppModel.shared.start()
         }
     }
 }
@@ -42,14 +67,30 @@ final class VaultStore {
     /// Hash of the open note's text as the editor last saw it; external edits differ from it.
     private var editorHash: Data?
     private var cursor = 0
+    private(set) var captureService: CaptureService?
+
+    static let vaultKey = "granite.vaultPath"
 
     init() {
         editor.addListener { [weak self] message in self?.handle(message) }
     }
 
+    /// Reopens the vault from the last session, if it still exists.
+    func reopenLastVault() async {
+        guard vault == nil, let path = UserDefaults.standard.string(forKey: Self.vaultKey) else { return }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else { return }
+        await open(URL(filePath: path, directoryHint: .isDirectory))
+    }
+
     func open(_ url: URL) async {
         let vault = Vault(root: url)
         self.vault = vault
+        UserDefaults.standard.set(vault.root.path(percentEncoded: false), forKey: Self.vaultKey)
+        let writer = SafeWriter(vault: vault)
+        self.writer = writer
+        // Capture works as soon as a vault is known: it needs no index.
+        captureService = CaptureService(vault: vault, writer: writer)
         isIndexing = true
         status = "Indexing \(url.lastPathComponent)…"
         syncTask?.cancel()
@@ -59,7 +100,6 @@ final class VaultStore {
             let indexer = Indexer(database: database, vault: vault, policy: policy)
             self.database = database
             self.indexer = indexer
-            self.writer = SafeWriter(vault: vault)
             // Catches up from the last FSEvents ID (or reconciles), then follows every change.
             let sync = VaultSync(indexer: indexer)
             // The store lives as long as the app; the task is cancelled when another vault opens.
@@ -121,6 +161,31 @@ final class VaultStore {
             guard !Task.isCancelled else { return }
             hits = result ?? []
         }
+    }
+
+    struct NoVaultError: LocalizedError {
+        var errorDescription: String? { "Open a vault in granite first." }
+    }
+
+    /// Saves a capture to `Inbox/` and returns its path.
+    func capture(_ request: CaptureRequest) async throws -> String {
+        guard let captureService else { throw NoVaultError() }
+        let path = try await captureService.capture(request)
+        status = "Captured \(path)"
+        return path
+    }
+
+    func setWhy(_ why: String, for path: String) async throws {
+        guard let captureService else { throw NoVaultError() }
+        try await captureService.setWhy(why, for: path)
+    }
+
+    func openNote(id: String) {
+        guard let database, let record = try? database.note(id: id) else {
+            status = "No note with id \(id)"
+            return
+        }
+        openNote(record.path)
     }
 
     func openNote(_ path: String, line: Int? = nil) {

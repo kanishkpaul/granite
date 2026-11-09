@@ -19,6 +19,11 @@ packages:
     path: Packages/KBCore
   KBIndex:
     path: Packages/KBIndex
+  KBCapture:
+    path: Packages/KBCapture
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 3.1.0
 
 targets:
   granite:
@@ -35,6 +40,14 @@ targets:
     dependencies:
       - package: KBCore
       - package: KBIndex
+      - package: KBCapture
+      - package: KeyboardShortcuts
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLName: local.granite.app
+            CFBundleURLSchemes: [granite]
     settings:
       base:
         PRODUCT_NAME: granite
