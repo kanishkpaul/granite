@@ -146,6 +146,7 @@ struct CommandPalette: View {
             Entry(id: "importPDF", title: "Import PDF…", detail: "Papers/") { shell.showImportPDF = true },
             Entry(id: "promote", title: "Promote selection to claim…", detail: "⌥⌘P") { shell.promoteSelection(store) },
             Entry(id: "claims", title: "Go to Claims", detail: "\(store.claims.count)") { store.selection = .claims },
+            Entry(id: "metrics", title: "Metrics dashboard", detail: "§11") { shell.showMetrics = true },
             Entry(id: "weekly", title: "Weekly review…", detail: store.weeklyReviewDue ? "due" : "") { shell.showWeekly = true },
             Entry(id: "digest", title: "Run digest now", detail: "AI/Digests") { Task { await store.runDigest() } },
             Entry(id: "latestDigest", title: "Open latest digest", detail: store.latestDigest().map { NoteParser.title(for: $0) } ?? "none yet") {

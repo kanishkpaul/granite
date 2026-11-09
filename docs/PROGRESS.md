@@ -34,7 +34,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | FSRS prompts (`> [!prompt]`), `reviews.jsonl`, review UI, "Make prompts" | ✓ | `KBReview`, `KBAI.PromptDrafter`, `App/Review`, spec `prompts.md` |
 | Lint (deterministic) + nightly digest, 3 a.m. scheduler | ✓ | `KBIndex.VaultLint`, `KBAI.DigestJob`, `App/Nightly.swift`, spec `digest.md` |
 | Weekly Socratic review session | ✓ | `KBCore.WeeklyNote`, `App/Review/WeeklyReviewView.swift`, spec `weekly-review.md` |
-| Metrics dashboard + weekly `AI/Metrics/YYYY-Www.md` | | |
+| Metrics dashboard + weekly `AI/Metrics/YYYY-Www.md` | ✓ | `KBIndex.VaultMetrics`, `App/Review/Metrics.swift`, spec `metrics.md` |
 | Enrichment: Crossref, OpenAlex, Semantic Scholar (on request) | | |
 | Docling extraction for "study" papers (if installed) | | |
 | MCP `propose_change`, `create_derived_note` | | |

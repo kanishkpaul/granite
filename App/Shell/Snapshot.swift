@@ -39,6 +39,10 @@ enum SnapshotMode {
                 }
                 await store.saveWeeklyNote([(question: question, answer: weekly)])
             }
+            if arguments.contains("--metrics") {
+                for metric in await store.computeMetrics() { NSLog("granite metric: %@ = %@ [%@]", metric.name, metric.value, metric.health.rawValue) }
+                _ = await store.freezeMetrics()
+            }
             if digest {
                 await store.runDigest()
                 NSLog("granite snapshot: %@", store.status)

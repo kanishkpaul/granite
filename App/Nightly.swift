@@ -47,7 +47,12 @@ extension VaultStore {
             status = "Digest: \(result.changed) changed note(s), \(result.lintIssues) lint issue(s)"
                 + (result.touches > 0 ? ", \(result.touches) source(s) touching claims" : "")
             refreshLists()
-            if openAfter { openNote(result.path) } else { await suggestLinks() }
+            if openAfter {
+                openNote(result.path)
+            } else {
+                await freezeMetrics()
+                await suggestLinks()
+            }
         } catch {
             status = "Digest failed: \(error)"
         }

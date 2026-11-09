@@ -88,6 +88,9 @@ struct MainView: View {
         .sheet(isPresented: $shell.showWeekly) {
             WeeklyReviewView().environment(store)
         }
+        .sheet(isPresented: $shell.showMetrics) {
+            MetricsView().environment(store)
+        }
         .sheet(isPresented: $shell.showPromote) {
             if let promoting = shell.promoting {
                 ClaimSheet(mode: .promote(line: promoting.line), text: promoting.text).environment(store)

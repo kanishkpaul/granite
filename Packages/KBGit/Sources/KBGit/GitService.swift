@@ -71,6 +71,22 @@ public actor GitService {
         return output.succeeded && output.text.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
     }
 
+    /// Lines added per Markdown file in commits since `since` (the inflow metric, §11).
+    public func linesAdded(since: Date) async throws -> [String: Int] {
+        guard await isRepository() else { return [:] }
+        let formatter = ISO8601DateFormatter()
+        let output = try await runner.run(["log", "--since=\(formatter.string(from: since))", "--numstat", "--format=",
+                                           "--no-renames", "--", "*.md"], check: false)
+        guard output.succeeded else { return [:] }
+        var added: [String: Int] = [:]
+        for line in output.text.split(separator: "\n") {
+            let parts = line.split(separator: "\t", maxSplits: 2)
+            guard parts.count == 3, let count = Int(parts[0]) else { continue }
+            added[String(parts[2]), default: 0] += count
+        }
+        return added
+    }
+
     public func state() async throws -> RepositoryState {
         guard await isRepository() else {
             return RepositoryState(isRepository: false, branch: nil, remotes: [], pending: [], busy: nil)

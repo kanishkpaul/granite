@@ -25,6 +25,8 @@ final class ShellState {
     var showReview = false
     /// The weekly Socratic review.
     var showWeekly = false
+    /// The metrics dashboard.
+    var showMetrics = false
     /// "Import PDF…" file picker.
     var showImportPDF = false
     /// A question to run as soon as the Ask window opens (snapshot/debug mode).

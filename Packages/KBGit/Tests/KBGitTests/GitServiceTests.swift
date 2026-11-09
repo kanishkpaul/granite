@@ -41,6 +41,19 @@ final class Repo: @unchecked Sendable {
 }
 
 @Suite struct GitServiceTests {
+    @Test func linesAddedPerMarkdownFile() async throws {
+        let repo = try await Repo()
+        try repo.put("Notes/a.md", "one\ntwo\n")
+        try repo.put("image.png", "binary-ish")
+        _ = try await repo.service.autoCommit()
+        try repo.put("Notes/a.md", "one\ntwo\nthree\n")
+        try repo.put("AI/Digests/d.md", "x\n")
+        _ = try await repo.service.autoCommit()
+        let added = try await repo.service.linesAdded(since: Date().addingTimeInterval(-3600))
+        #expect(added == ["Notes/a.md": 3, "AI/Digests/d.md": 1])
+        #expect(try await Repo(initialize: false).service.linesAdded(since: .distantPast).isEmpty)
+    }
+
     @Test func notARepository() async throws {
         let repo = try await Repo(initialize: false)
         #expect(try await repo.service.autoCommit() == .notARepository)
