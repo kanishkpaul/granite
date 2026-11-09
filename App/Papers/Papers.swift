@@ -55,10 +55,10 @@ extension VaultStore {
 
     /// Search hits and cited passages in a paper's full text open the PDF at that page.
     func openPaperPassage(path: String, headingPath: String, text: String) -> Bool {
-        guard path.hasPrefix("Papers/text/"), let pdf = pdfPath(for: path),
-              let page = PaperText.page(fromHeadingPath: headingPath) else { return false }
+        guard path.hasPrefix("Papers/text/"), let pdf = pdfPath(for: path) else { return false }
         let words = text.split(whereSeparator: \.isWhitespace).prefix(8).joined(separator: " ")
-        openPDF(pdf, page: page, find: words)
+        // Docling text has no page sections: page 0 makes the PDF view search every page.
+        openPDF(pdf, page: PaperText.page(fromHeadingPath: headingPath) ?? 0, find: words)
         return true
     }
 
@@ -66,6 +66,57 @@ extension VaultStore {
     func openCited(_ hit: HybridHit, quote: String?) {
         openNote(hit.path, line: hit.startLine)
         _ = openPaperPassage(path: hit.path, headingPath: hit.headingPath, text: quote ?? hit.text)
+    }
+
+    /// The literature note for the open note (the note itself, its full text, or its PDF).
+    var openPaperNote: String? {
+        guard let path = openPath else { return nil }
+        if let citekey = PaperPaths.citekey(of: path) { return PaperPaths(citekey: citekey).note }
+        return pdfPath(for: path).flatMap { literatureNotePath(forPDF: $0) }
+    }
+
+    /// Looks the open paper up in Crossref, OpenAlex and Semantic Scholar (by DOI, else title).
+    func enrichOpenPaper() async {
+        guard let note = openPaperNote, let vault, let writer,
+              let text = try? String(contentsOf: vault.url(for: note), encoding: .utf8) else { return }
+        let frontmatter = MarkdownDocument(text: text).frontmatter
+        status = "Looking the paper up…"
+        do {
+            let record = try await ScholarlyClient().lookup(doi: frontmatter?["doi"]?.text, title: frontmatter?["title"]?.text)
+            let updated = try EnrichmentWriter.apply(record, to: text, date: ClaimDay.string(Date()))
+            try await writer.write(updated, to: note, as: .user)
+            _ = try await indexer?.update(paths: [note])
+            status = "Enriched \(NoteParser.title(for: note))" + (record.citedBy.map { " · cited by \($0)" } ?? "")
+            refreshInspector()
+        } catch {
+            status = "Could not enrich: \(error)"
+        }
+    }
+
+    var doclingInstalled: Bool { DoclingRunner.locate() != nil }
+
+    /// "Study with Docling": structured text (sections, tables) replaces the page text.
+    func studyOpenPaper() async {
+        guard let note = openPaperNote, let vault, let writer, let citekey = PaperPaths.citekey(of: note) else { return }
+        guard let executable = DoclingRunner.locate() else {
+            status = DoclingError.notInstalled.description
+            return
+        }
+        let paths = PaperPaths(citekey: citekey)
+        status = "Docling is reading \(citekey)… (minutes for long papers)"
+        do {
+            let runner = DoclingRunner(executable: executable, cache: vault.supportDirectory.appending(path: "docling"))
+            let markdown = try await runner.markdown(pdf: vault.url(for: paths.pdf), citekey: citekey)
+            let title = (try? database?.note(path: note))??.title ?? citekey
+            try await writer.write(DoclingRunner.textNote(paths: paths, title: title, markdown: markdown), to: paths.text, as: .user)
+            if let text = try? String(contentsOf: vault.url(for: note), encoding: .utf8) {
+                try await writer.write(try FrontmatterEditor.setScalar("status", to: "studied", in: text), to: note, as: .user)
+            }
+            _ = try await indexer?.update(paths: [paths.text, note])
+            status = "Structured text ready for \(citekey)"
+        } catch {
+            status = "\(error)"
+        }
     }
 
     func literatureNotePath(forPDF pdf: String) -> String? {

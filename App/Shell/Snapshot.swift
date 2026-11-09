@@ -43,6 +43,10 @@ enum SnapshotMode {
                 for metric in await store.computeMetrics() { NSLog("granite metric: %@ = %@ [%@]", metric.name, metric.value, metric.health.rawValue) }
                 _ = await store.freezeMetrics()
             }
+            if arguments.contains("--enrich") {
+                await store.enrichOpenPaper()
+                NSLog("granite snapshot: %@", store.status)
+            }
             if digest {
                 await store.runDigest()
                 NSLog("granite snapshot: %@", store.status)

@@ -140,34 +140,45 @@ public enum FrontmatterEditor {
     }
 
     /// Sets a top-level scalar property. Replaces a single-line `key: value` if present,
-    /// otherwise inserts `key: value` as the first property (creating the block if needed).
+    /// otherwise adds `key: value` as the last property (creating the block if needed).
     /// Throws `InvalidYAML` rather than edit frontmatter it cannot read.
     public static func setScalar(_ key: String, to value: String, in text: String) throws -> String {
+        try setRaw(key, yaml: yamlScalar(value), in: text)
+    }
+
+    /// Sets a top-level property to already-rendered YAML (`2024`, `[a, b]`). A multi-line value
+    /// (a block list) is replaced as a whole. Throws `InvalidYAML` rather than edit what it can't read.
+    public static func setRaw(_ key: String, yaml value: String, in text: String) throws -> String {
         let hasBOM = text.hasPrefix("\u{FEFF}")
         let document = MarkdownDocument(text: text)
         if let error = document.frontmatter?.error { throw InvalidYAML(description: error) }
         let newline = Lines.preferredTerminator(in: document.lines)
-        let rendered = "\(key): \(yamlScalar(value))"
+        let rendered = "\(key): \(value)"
         var output: [String]
 
         if document.frontmatter != nil {
             let fenceEnd = document.bodyStart - 1
             var lines = document.lines.map { $0.text + $0.terminator }
             if let existing = (1..<fenceEnd).first(where: { isTopLevelKey(key, line: document.lines[$0].text) }) {
-                let next = existing + 1
-                let isMultiline = next < fenceEnd && isContinuation(document.lines[next].text)
-                if !isMultiline {
-                    lines[existing] = rendered + document.lines[existing].terminator
-                    return (hasBOM ? "\u{FEFF}" : "") + lines.joined()
-                }
+                var end = existing + 1
+                while end < fenceEnd && isContinuation(document.lines[end].text) { end += 1 }
+                lines.replaceSubrange(existing..<end, with: [rendered + document.lines[existing].terminator])
+                return (hasBOM ? "\u{FEFF}" : "") + lines.joined()
             }
-            lines.insert(rendered + newline, at: 1)
+            // New keys go last, after the ones you wrote; an id goes first.
+            lines.insert(rendered + newline, at: key == "id" ? 1 : fenceEnd)
             output = lines
         } else {
             output = ["---" + newline, rendered + newline, "---" + newline]
             output.append(contentsOf: document.lines.map { $0.text + $0.terminator })
         }
         return (hasBOM ? "\u{FEFF}" : "") + output.joined()
+    }
+
+    /// `["a", "b"]` as a flow list of quoted strings.
+    public static func yamlList(_ items: [String]) -> String {
+        "[" + items.map { "\"" + $0.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\"" }
+            .joined(separator: ", ") + "]"
     }
 
     static func isTopLevelKey(_ key: String, line: String) -> Bool {

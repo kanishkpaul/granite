@@ -102,7 +102,9 @@ final class PDFReader {
         if let block = navigation.block, let highlight = highlightsByID[block] {
             target = find(highlight.text, onPage: highlight.page)
         } else if let text = navigation.find {
-            target = find(text, onPage: navigation.page)
+            // Page 0 (or a miss on the given page): the first match anywhere.
+            target = navigation.page > 0 ? find(text, onPage: navigation.page) : nil
+            if target == nil { target = findAnywhere(text) }
         }
         if let target {
             mark(target, color: .systemOrange)
@@ -120,6 +122,15 @@ final class PDFReader {
             if let match = document.findString(candidate, withOptions: [.caseInsensitive]).first(where: { $0.pages.contains(page) }) {
                 return match
             }
+        }
+        return nil
+    }
+
+    func findAnywhere(_ text: String) -> PDFSelection? {
+        guard let document else { return nil }
+        let words = text.split(whereSeparator: \.isWhitespace)
+        for candidate in [text, words.prefix(8).joined(separator: " "), words.prefix(4).joined(separator: " ")] where candidate.count >= 3 {
+            if let match = document.findString(candidate, withOptions: [.caseInsensitive]).first { return match }
         }
         return nil
     }

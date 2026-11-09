@@ -35,8 +35,8 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Lint (deterministic) + nightly digest, 3 a.m. scheduler | ✓ | `KBIndex.VaultLint`, `KBAI.DigestJob`, `App/Nightly.swift`, spec `digest.md` |
 | Weekly Socratic review session | ✓ | `KBCore.WeeklyNote`, `App/Review/WeeklyReviewView.swift`, spec `weekly-review.md` |
 | Metrics dashboard + weekly `AI/Metrics/YYYY-Www.md` | ✓ | `KBIndex.VaultMetrics`, `App/Review/Metrics.swift`, spec `metrics.md` |
-| Enrichment: Crossref, OpenAlex, Semantic Scholar (on request) | | |
-| Docling extraction for "study" papers (if installed) | | |
+| Enrichment: Crossref, OpenAlex, Semantic Scholar (on request) | ✓ | `KBPapers.ScholarlyClient`, spec `enrichment.md` |
+| Docling extraction for "study" papers (if installed) | ◐ built; Docling not installed here | `KBPapers.DoclingRunner`, spec `enrichment.md` |
 | MCP `propose_change`, `create_derived_note` | | |
 | Budget enforcement (alert, hard stop for background jobs) | ✓ (in the router) | `KBAI.Router` |
 
@@ -58,6 +58,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 - Editor checks by hand: CJK IME, drag and drop, VoiceOver (decision 0003).
 - Hotkey and Shortcuts capture by hand (`capture.md`).
 - 20+ re-find queries in `.granite/eval/retrieval.jsonl`.
+- Optional: `pipx install docling`, then "Study with Docling" on a paper.
 - Import a few real papers (⌘K "Import PDF…" or drop them on the window) and check the extracted text.
 - Decide on link proposals for a few weeks: the acceptance rate tunes (and can pause) see-also.
 - Optional: a Claude API key (Settings) for the cloud routes; a Developer ID team for PCC (decision 0004).

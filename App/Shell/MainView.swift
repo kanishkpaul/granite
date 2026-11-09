@@ -1,5 +1,6 @@
 import KBCore
 import KBIndex
+import KBPapers
 import SwiftUI
 
 struct MainView: View {
@@ -286,6 +287,11 @@ struct InspectorView: View {
                 if let pdf = store.openPath.flatMap({ store.pdfPath(for: $0) }) {
                     Section("Paper") {
                         Button("Open PDF", systemImage: "doc.richtext") { store.openPDF(pdf) }
+                        Button("Look Up (Crossref, OpenAlex)", systemImage: "globe") { Task { await store.enrichOpenPaper() } }
+                            .help("Fills in authors, year, venue, abstract and citation counts. Sends only the DOI or title.")
+                        Button("Study with Docling", systemImage: "tablecells") { Task { await store.studyOpenPaper() } }
+                            .disabled(!store.doclingInstalled)
+                            .help(store.doclingInstalled ? "Structured text: sections and tables" : DoclingError.notInstalled.description)
                         let count = store.highlights(forPDF: pdf).count
                         if count > 0 { Text("\(count) highlight(s) in this note").foregroundStyle(.secondary) }
                     }
