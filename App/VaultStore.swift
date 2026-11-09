@@ -203,6 +203,17 @@ final class VaultStore {
         }
     }
 
+    /// Grounded Q&A over the vault (hybrid retrieval + reranker; keyword-only if semantic search is off).
+    func ask(_ question: String, mode: QAMode, view: String?) async throws -> QAAnswer {
+        guard let database, let models else { throw NoVaultError() }
+        let reranker = semantic.isEnabled ? await semantic.loadReranker() : nil
+        let searcher = semantic.searcher ?? HybridSearcher(database: database, vectors: nil, embedder: nil, reranker: reranker)
+        let policy = self.policy
+        let qa = GroundedQA(models: models, untrusted: { policy.policy(for: $0).trust == "untrusted" },
+                            retrieve: GroundedQA.retrieval(searcher))
+        return try await qa.ask(question, mode: mode, userView: view)
+    }
+
     /// Opening a search result: records rank and time-to-open for the re-find metric.
     func openSearchResult(_ hit: SearchHit) {
         if let last = lastSearch, let rank = last.paths.firstIndex(of: hit.path) {

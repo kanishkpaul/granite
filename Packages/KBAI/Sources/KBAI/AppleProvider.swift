@@ -23,18 +23,22 @@ public struct AppleProvider: LanguageProvider {
                 text = try await respond(LanguageModelSession(model: PrivateCloudComputeLanguageModel(), instructions: request.system),
                                          prompt: prompt, schema: request.schema)
             } else {
-                text = try await respond(LanguageModelSession(model: SystemLanguageModel.default, instructions: request.system),
+                // granite only ever asks the on-device model to transform your own notes (answer from them,
+                // tag, summarize), which is what the permissive guardrails are for.
+                let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
+                text = try await respond(LanguageModelSession(model: model, instructions: request.system),
                                          prompt: prompt, schema: request.schema)
             }
             // FoundationModels reports no token counts; estimate (≈ 4 characters per token) for the audit log.
             return Generation(text: text, inputTokens: (request.system.count + prompt.count) / 4, outputTokens: text.count / 4,
                               model: route == .pcc ? "apple-pcc" : "apple-on-device")
         } catch let error as LanguageModelError {
-            throw ModelError.unavailable("\(route.rawValue): \(error)")
+            // Includes guardrail false positives: another route may still answer.
+            throw ModelError.unavailable(ModelError.brief(error))
         } catch let error as ModelError {
             throw error
         } catch {
-            throw ModelError.unavailable("\(route.rawValue): \(error)")
+            throw ModelError.unavailable(ModelError.brief(error))
         }
     }
 

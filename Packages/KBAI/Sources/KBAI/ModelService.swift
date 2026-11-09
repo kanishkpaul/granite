@@ -80,7 +80,7 @@ public actor ModelService {
                 lastError = error
                 guard error.allowsFallback else { throw error }
                 cooling[route] = Date()
-                notice = "\(route.rawValue) failed (\(error)); trying the next route."
+                notice = "\(route.rawValue) unavailable (\(ModelError.brief(error))); used the next route."
             }
         }
         throw lastError

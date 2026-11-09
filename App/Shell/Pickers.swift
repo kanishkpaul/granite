@@ -132,6 +132,7 @@ struct CommandPalette: View {
         return [
             Entry(id: "new", title: "New note", detail: "⌘N") { shell.switcherCreates = true; shell.showSwitcher = true },
             Entry(id: "today", title: "Open today's daily note", detail: "⌘D") { Task { await store.openToday() } },
+            Entry(id: "ask", title: "Ask your notes…", detail: "⌘J") { shell.showAsk = true },
             Entry(id: "switch", title: "Open note…", detail: "⌘O") { shell.showSwitcher = true },
             Entry(id: "capture", title: "Capture…", detail: "⌃⌥Space") { AppModel.shared.capture.show(trigger: .menu) },
             Entry(id: "search", title: "Search notes", detail: "⌘F") { shell.focusSearch += 1 },

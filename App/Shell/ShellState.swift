@@ -15,4 +15,8 @@ final class ShellState {
     var showRename = false
     /// Folder picker for moving the open note.
     var showMove = false
+    /// "Ask your notes" (grounded Q&A).
+    var showAsk = false
+    /// A question to run as soon as the Ask window opens (snapshot/debug mode).
+    var pendingQuestion: String?
 }

@@ -11,10 +11,16 @@ enum SnapshotMode {
         guard let index = arguments.firstIndex(of: "--snapshot"), index + 1 < arguments.count else { return }
         let output = URL(filePath: arguments[index + 1])
         let open = arguments.firstIndex(of: "--open").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
+        let ask = arguments.firstIndex(of: "--ask").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         Task {
             try? await Task.sleep(for: .seconds(3))
             let store = AppModel.shared.store
             if let open { store.openNote(open) }
+            if let ask {
+                AppModel.shared.shell.pendingQuestion = ask
+                AppModel.shared.shell.showAsk = true
+                try? await Task.sleep(for: .seconds(12))
+            }
             try? await Task.sleep(for: .seconds(2))
             guard let window = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue.hasPrefix("main") ?? false }),
                   let view = window.contentView else {
@@ -26,6 +32,11 @@ enum SnapshotMode {
                 view.cacheDisplay(in: view.bounds, to: rep)
                 try? rep.representation(using: .png, properties: [:])?.write(to: output)
             }
+            if let sheet = window.attachedSheet?.contentView, let rep = sheet.bitmapImageRepForCachingDisplay(in: sheet.bounds) {
+                sheet.cacheDisplay(in: sheet.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?
+                    .write(to: output.deletingPathExtension().appendingPathExtension("sheet.png"))
+            }
             if let image = try? await store.editor.webView.takeSnapshot(configuration: nil),
                let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
                 try? rep.representation(using: .png, properties: [:])?
@@ -34,6 +45,7 @@ enum SnapshotMode {
             let folders: String = store.folders.map { folder -> String in "\(folder.path) (\(folder.noteCount))" }.joined(separator: ", ")
             NSLog("granite snapshot: inbox %d; folders %@; listed %d; status %@", store.inboxCount, folders,
                   store.listed.count, store.status)
+            AppModel.shared.shell.showAsk = false
             // Quit from the run loop, not from inside this task.
             NSApplication.shared.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
         }

@@ -62,6 +62,9 @@ struct MainView: View {
         .sheet(isPresented: $shell.showMove) {
             MovePicker().environment(store)
         }
+        .sheet(isPresented: $shell.showAsk) {
+            AskView().environment(store)
+        }
         .alert("Rename note", isPresented: $shell.showRename) {
             TextField("Title", text: $renameTitle)
             Button("Rename") { Task { await store.renameOpenNote(to: renameTitle) } }

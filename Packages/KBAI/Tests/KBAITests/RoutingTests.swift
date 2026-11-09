@@ -128,7 +128,7 @@ final class FakeProvider: LanguageProvider, @unchecked Sendable {
         let result = try await service.run(.qa, labels: [.cloud], notePaths: ["Notes/b.md", "Notes/a.md", "Notes/a.md"],
                                            request: GenerationRequest(system: "s", prompt: "p"))
         #expect(result.route == .onDevice && result.generation.text == "answer" && result.label == .cloud)
-        #expect(result.notice?.contains("pcc failed") == true)
+        #expect(result.notice?.contains("pcc unavailable") == true)
         let audit = try state.recentAudit()
         #expect(audit.map(\.route).sorted() == ["haiku", "on-device", "pcc"])
         #expect(audit.first { $0.route == "on-device" }?.notePaths == ["Notes/a.md", "Notes/b.md"])

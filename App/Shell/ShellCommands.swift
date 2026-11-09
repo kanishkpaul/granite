@@ -20,6 +20,8 @@ struct ShellCommands: Commands {
                 .keyboardShortcut("k")
             Button("Search Notes") { shell.focusSearch += 1 }
                 .keyboardShortcut("f")
+            Button("Ask Your Notes…") { shell.showAsk = true }
+                .keyboardShortcut("j")
             Divider()
             Button("Copy Link to Note") { store.copyWikilink() }
                 .keyboardShortcut("l", modifiers: [.command, .shift])

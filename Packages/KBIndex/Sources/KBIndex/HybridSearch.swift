@@ -43,6 +43,26 @@ public struct HybridHit: Sendable {
     public let vectorRank: Int?
     public let fused: Double
     public let rerankScore: Double?
+
+    public init(chunk: Int64, path: String, title: String, type: String, origin: String, headingPath: String, text: String,
+                startLine: Int, endLine: Int, blockID: String?, aiLabel: String, bm25Rank: Int?, vectorRank: Int?,
+                fused: Double, rerankScore: Double?) {
+        self.chunk = chunk
+        self.path = path
+        self.title = title
+        self.type = type
+        self.origin = origin
+        self.headingPath = headingPath
+        self.text = text
+        self.startLine = startLine
+        self.endLine = endLine
+        self.blockID = blockID
+        self.aiLabel = aiLabel
+        self.bm25Rank = bm25Rank
+        self.vectorRank = vectorRank
+        self.fused = fused
+        self.rerankScore = rerankScore
+    }
 }
 
 public struct HybridResult: Sendable {
@@ -51,6 +71,12 @@ public struct HybridResult: Sendable {
     public let abstained: Bool
     /// Milliseconds per stage: bm25, embed, vector, fuse, rerank, total.
     public let timings: [String: Double]
+
+    public init(hits: [HybridHit], abstained: Bool, timings: [String: Double]) {
+        self.hits = hits
+        self.abstained = abstained
+        self.timings = timings
+    }
 }
 
 /// BM25 ∥ vectors → RRF → optional rerank → best chunk per note (master plan §6.2).

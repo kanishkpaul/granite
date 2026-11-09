@@ -22,7 +22,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 | Model router: labels, taint, budget, routes (on-device, PCC, Claude, MLX) | ◐ built; Claude needs your key | `KBAI`, spec `model-router.md` |
 | Hybrid search (BM25 + vectors + rerank) in the app and `granite-mcp`; background embedding | ✓ | `App/Semantic.swift`, `App/MCPHelper`, spec `hybrid-search.md` |
 | Re-find eval harness on `.granite/eval/retrieval.jsonl` | ◐ harness exists (`granite-ml bench`); you: write 20+ queries | |
-| Grounded Q&A with verifier, abstention, Socratic mode | | |
+| Grounded Q&A with verifier, abstention, Socratic mode | ✓ | `KBAI.GroundedQA`, `App/Shell/AskView.swift`, spec `qa.md` |
 | Inline related items (≤ 3 ghost links), acceptance tracking, auto-pause | | |
 | Proposal queue v1 (`AI/Proposals/`, accept/edit/reject) | | |
 | Papers: native PDF import, PDF view, highlights to blocks, jump to cited passage (Zotero deferred, 0005) | | |

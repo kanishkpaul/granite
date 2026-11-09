@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import KBAI
 import KBAIMLX
 import KBCore
 import KBIndex
@@ -9,7 +10,7 @@ struct GraniteML: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "granite-ml",
         abstract: "Local embeddings, hybrid search and retrieval benchmarks (MLX).",
-        subcommands: [Embed.self, Search.self, Bench.self]
+        subcommands: [Embed.self, Search.self, Bench.self, Ask.self]
     )
 }
 
@@ -154,5 +155,36 @@ struct Bench: AsyncParsableCommand {
             print(String(format: "%-14@ recall@5 %.3f  recall@10 %.3f  MRR %.3f  latency p50 %.0fms p95 %.0fms  (%@)",
                          name as NSString, Double(at5) / n, Double(at10) / n, mrr / n, p(0.5), p(0.95), stageText))
         }
+    }
+}
+
+struct Ask: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Grounded Q&A: answer only from the vault, every sentence verified.")
+    @OptionGroup var options: IndexOptions
+    @Argument var question: [String]
+    @Option(help: "Your own view first (Socratic mode).") var view: String?
+
+    func run() async throws {
+        let database = try IndexDatabase(url: options.databaseURL)
+        let (embedder, reranker) = try await loadModels(reranker: true)
+        let searcher = HybridSearcher(database: database, vectors: VectorIndex(database: database), embedder: embedder,
+                                      reranker: reranker)
+        let models = ModelService(providers: ModelService.standardProviders(), state: nil)
+        let qa = GroundedQA(models: models, retrieve: GroundedQA.retrieval(searcher))
+        let clock = ContinuousClock()
+        let start = clock.now
+        let answer = try await qa.ask(question.joined(separator: " "), mode: view == nil ? .tellMe : .socratic, userView: view)
+        let ms = elapsedMs(clock.now - start)
+        if answer.abstained {
+            print("I have no note on that.")
+        }
+        for sentence in answer.sentences {
+            let source = sentence.sourceID.flatMap { id in answer.sources.first { $0.id == id } }
+            let where_ = source.map { "\($0.hit.path):\($0.hit.startLine)" } ?? "no source"
+            print("\(sentence.verified ? "✓" : "✗ unsupported") \(sentence.text)  [\(where_)]")
+        }
+        print(String(format: "route %@ · label %@ · %d/%d verified · %.0f ms%@", answer.route?.rawValue ?? "none",
+                     answer.label.rawValue, answer.verifiedCount, answer.sentences.count, ms,
+                     answer.notice.map { " · " + $0 } ?? ""))
     }
 }

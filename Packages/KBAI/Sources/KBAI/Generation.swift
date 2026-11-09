@@ -113,6 +113,13 @@ public enum ModelError: Error, CustomStringConvertible, Equatable {
         }
     }
 
+    /// A one-line, bounded description of any error (NSError chains can run to pages).
+    public static func brief(_ error: any Error) -> String {
+        let text = (error as? ModelError)?.description ?? (error as NSError).localizedDescription
+        let line = text.split(separator: "\n").first.map(String.init) ?? text
+        return line.count > 140 ? String(line.prefix(140)) + "…" : line
+    }
+
     /// Worth trying the next route.
     var allowsFallback: Bool {
         switch self {
