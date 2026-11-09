@@ -31,6 +31,11 @@ struct ShellCommands: Commands {
                 .keyboardShortcut("r", modifiers: [.command, .option])
             Button("Move Note to Folder…") { shell.showMove = true }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
+            Divider()
+            Button("Promote to Claim…") { shell.promoteSelection(store) }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+            Button("Supersede Claim…") { shell.showSupersede = true }
+                .disabled(!store.openNoteIsClaim)
         }
         CommandGroup(after: .sidebar) {
             Button("Toggle Inspector") { shell.showInspector.toggle() }

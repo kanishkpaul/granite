@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import WebKit
 
-/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all] [--related-line N] [--import-pdf file] [--pdf Papers/pdf/x.pdf:page]` renders the main window
+/// Debug: `granite --snapshot <out.png> [--open <path>] [--ask <question>] [--suggest] [--select proposals|all] [--related-line N] [--import-pdf file] [--promote-line N] [--pdf Papers/pdf/x.pdf:page]` renders the main window
 /// (and the editor's web view, which draws out of process) to PNGs, then quits. Lets agents check
 /// layout without screen-recording permission.
 @MainActor
@@ -14,6 +14,7 @@ enum SnapshotMode {
         let open = arguments.firstIndex(of: "--open").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let ask = arguments.firstIndex(of: "--ask").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let suggest = arguments.contains("--suggest")
+        let promoteLine = arguments.firstIndex(of: "--promote-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
         let importPDF = arguments.firstIndex(of: "--import-pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let pdfOpen = arguments.firstIndex(of: "--pdf").flatMap { $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }
         let contextLine = arguments.firstIndex(of: "--related-line").flatMap { $0 + 1 < arguments.count ? Int(arguments[$0 + 1]) : nil }
@@ -24,6 +25,15 @@ enum SnapshotMode {
             try? await Task.sleep(for: .seconds(3))
             if let open { store.openNote(open) }
             if suggest { await store.suggestLinks() }
+            if let promoteLine, let path = store.openPath, let vault = store.vault,
+               let text = try? String(contentsOf: vault.url(for: path), encoding: .utf8) {
+                // Promote that line, then supersede the new claim once, and report the chain.
+                let line = String(text.split(separator: "\n", omittingEmptySubsequences: false)[promoteLine - 1])
+                await store.promoteToClaim(line, line: promoteLine, confidence: 0.75)
+                await store.supersedeOpenClaim(with: "Revised: " + line, confidence: 0.6)
+                let chain = await store.claimHistory(of: store.openPath ?? "").map { "\($0.title) [\($0.status.rawValue)]" }
+                NSLog("granite snapshot: claims %d; chain %@", store.claims.count, chain.joined(separator: " → "))
+            }
             if let importPDF { await store.importPDFs([URL(filePath: importPDF)]) }
             if let pdfOpen {
                 // "Papers/pdf/x.pdf:3" opens page 3 and marks the first highlight on it, if any.

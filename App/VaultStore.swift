@@ -23,6 +23,9 @@ final class VaultStore {
     var openProposals: [Proposal] = []
     var pausedFeatures: [String] = []
     var proposalTask: Task<Void, Never>?
+    /// The claim ledger: see Claims.swift.
+    var claimService: ClaimService?
+    var claims: [ClaimRecord] = []
     /// Inline related items while writing: see Related.swift.
     var related = RelatedSession()
     /// PDF windows: the path the main window should open next, and where each should go (Papers.swift).
@@ -33,7 +36,9 @@ final class VaultStore {
     private var loadedVersion = 0
     /// Hash of the open note's text as the editor last saw it; external edits differ from it.
     private var editorHash: Data?
-    private var cursor = 0
+    private(set) var cursor = 0
+    private(set) var selectionAnchor = 0
+    private(set) var cursorLine = 1
     private(set) var captureService: CaptureService?
     private(set) var noteFactory: NoteFactory?
     private var renamer: RenameService?
@@ -54,6 +59,7 @@ final class VaultStore {
     enum SidebarItem: Hashable {
         case inbox
         case proposals
+        case claims
         case all
         case folder(String)
 
@@ -61,6 +67,7 @@ final class VaultStore {
             switch self {
             case .inbox: "Inbox"
             case .proposals: "AI/Proposals"
+            case .claims: ""
             case .all: ""
             case .folder(let path): path
             }
@@ -121,6 +128,7 @@ final class VaultStore {
             self.renamer = renamer
             inbox = InboxQueue(indexer: indexer, writer: writer, renamer: renamer)
             proposalStore = ProposalStore(indexer: indexer, writer: writer, state: state)
+            claimService = ClaimService(indexer: indexer, writer: writer)
             scheduleSeeAlso()
             // An existing index is usable right away; the watcher then replays only what changed
             // while granite was closed, which may be nothing (so no update would arrive).
@@ -297,8 +305,10 @@ final class VaultStore {
             loadedVersion = version
             editorHash = Data(SHA256.hash(data: Data(text.utf8)))
             Task { await save(text, to: path) }
-        case .selection(_, let head, _):
+        case .selection(let anchor, let head, let line):
             cursor = head
+            selectionAnchor = anchor
+            cursorLine = line
         case .complete(let id, let kind, let query):
             editor.send(.completions(id: id, items: completions(kind: kind, query: query)))
         case .resolveEmbed(let id, let target):
@@ -354,6 +364,7 @@ final class VaultStore {
         Task {
             await refreshInbox()
             await refreshProposals()
+            await refreshClaims()
         }
     }
 

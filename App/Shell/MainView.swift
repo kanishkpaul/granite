@@ -34,7 +34,7 @@ struct MainView: View {
                     }
                 }
                 .inspector(isPresented: $shell.showInspector) {
-                    InspectorView()
+                    InspectorView(superseding: $shell.showSupersede)
                         .inspectorColumnWidth(min: 220, ideal: 260, max: 360)
                 }
         }
@@ -82,6 +82,14 @@ struct MainView: View {
         .sheet(isPresented: $shell.showAsk) {
             AskView().environment(store)
         }
+        .sheet(isPresented: $shell.showPromote) {
+            if let promoting = shell.promoting {
+                ClaimSheet(mode: .promote(line: promoting.line), text: promoting.text).environment(store)
+            }
+        }
+        .sheet(isPresented: $shell.showSupersede) {
+            ClaimSheet(mode: .supersede, text: store.openPath.map { store.claimText($0) } ?? "").environment(store)
+        }
         .alert("Rename note", isPresented: $shell.showRename) {
             TextField("Title", text: $renameTitle)
             Button("Rename") { Task { await store.renameOpenNote(to: renameTitle) } }
@@ -120,6 +128,15 @@ struct SidebarView: View {
                     }
                 } icon: { Image(systemName: "sparkles") }
                 .tag(VaultStore.SidebarItem.proposals)
+                Label {
+                    HStack {
+                        Text("Claims")
+                        Spacer()
+                        let held = store.claims.filter { $0.status == .held }.count
+                        if held > 0 { Text("\(held)").foregroundStyle(.secondary).monospacedDigit() }
+                    }
+                } icon: { Image(systemName: "checkmark.seal") }
+                .tag(VaultStore.SidebarItem.claims)
                 Label("All notes", systemImage: "doc.on.doc").tag(VaultStore.SidebarItem.all)
                 Button {
                     Task { await store.openToday() }
@@ -154,6 +171,8 @@ struct NoteListView: View {
                 InboxView()
             } else if query.trimmingCharacters(in: .whitespaces).isEmpty && store.selection == .proposals {
                 ProposalsView()
+            } else if query.trimmingCharacters(in: .whitespaces).isEmpty && store.selection == .claims {
+                ClaimsView()
             } else if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 List(store.listed, id: \.path) { note in
                     row(title: note.title, detail: folder(of: note.path), trailing: note.modified.formatted(.relative(presentation: .named)),
@@ -206,6 +225,7 @@ struct NoteListView: View {
 
 struct InspectorView: View {
     @Environment(VaultStore.self) private var store
+    @Binding var superseding: Bool
 
     var body: some View {
         if let data = store.inspector {
@@ -226,6 +246,9 @@ struct InspectorView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+                if let path = store.openPath, store.openNoteIsClaim {
+                    ClaimInspectorSection(path: path, superseding: $superseding)
                 }
                 if let pdf = store.openPath.flatMap({ store.pdfPath(for: $0) }) {
                     Section("Paper") {

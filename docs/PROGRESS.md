@@ -30,7 +30,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 ## Phase 3: compounding loops
 | Item | Status | Where |
 |---|---|---|
-| Claim ledger: promote, supersede, history view | | |
+| Claim ledger: promote, supersede, history view | ✓ | `KBCore.ClaimNote`, `KBIndex.ClaimService`, `App/Claims`, spec `claims.md` |
 | FSRS prompts (`> [!prompt]`), `reviews.jsonl`, review UI, "Make prompts" | | `KBReview` |
 | Lint (deterministic) + nightly digest, 3 a.m. scheduler | | |
 | Weekly Socratic review session | | |

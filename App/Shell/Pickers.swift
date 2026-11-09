@@ -143,6 +143,8 @@ struct CommandPalette: View {
             Entry(id: "inbox", title: "Go to Inbox", detail: "\(store.inboxCount)") { store.selection = .inbox },
             Entry(id: "proposals", title: "Go to Proposals", detail: "\(store.openProposals.count)") { store.selection = .proposals },
             Entry(id: "importPDF", title: "Import PDF…", detail: "Papers/") { shell.showImportPDF = true },
+            Entry(id: "promote", title: "Promote selection to claim…", detail: "⌥⌘P") { shell.promoteSelection(store) },
+            Entry(id: "claims", title: "Go to Claims", detail: "\(store.claims.count)") { store.selection = .claims },
             Entry(id: "suggest", title: "Suggest links for this week's notes", detail: "proposals") {
                 Task { await store.suggestLinks() }
             },
