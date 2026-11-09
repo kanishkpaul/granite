@@ -11,6 +11,30 @@ public struct FileChange: Sendable, Hashable {
 
 /// Why auto-commit stopped: too many deletions, or notes that became empty.
 /// Evicted iCloud files and runaway agents both look like this (research report 02).
+public struct Commit: Sendable, Hashable {
+    public let sha: String
+    public let date: Date
+    public let subject: String
+    public let body: String
+
+    public init(sha: String, date: Date, subject: String, body: String) {
+        self.sha = sha
+        self.date = date
+        self.subject = subject
+        self.body = body
+    }
+
+    /// Values of `Key: value` trailers in the message body (e.g. `Granite-Decision`).
+    public func trailers(_ key: String) -> [String] {
+        body.split(separator: "\n").compactMap { line in
+            let text = line.trimmingCharacters(in: .whitespaces)
+            guard text.lowercased().hasPrefix(key.lowercased() + ":") else { return nil }
+            let value = text.dropFirst(key.count + 1).trimmingCharacters(in: .whitespaces)
+            return value.isEmpty ? nil : value
+        }
+    }
+}
+
 public struct DeletionAlarm: Sendable, Equatable {
     public let deletions: [String]
     public let emptyNotes: [String]
@@ -69,6 +93,35 @@ public actor GitService {
     public func isRepository() async -> Bool {
         guard let output = try? await runner.run(["rev-parse", "--is-inside-work-tree"], check: false) else { return false }
         return output.succeeded && output.text.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
+    }
+
+    /// Commits on the current branch, newest first (`since` and/or `limit`).
+    public func commits(since: Date? = nil, limit: Int = 200) async throws -> [Commit] {
+        guard await isRepository() else { return [] }
+        var arguments = ["log", "--format=%H%x1f%aI%x1f%s%x1f%b%x1e", "-n", String(limit)]
+        if let since { arguments.append("--since=\(ISO8601DateFormatter().string(from: since))") }
+        let output = try await runner.run(arguments, check: false)
+        guard output.succeeded else { return [] }
+        return output.text.split(separator: "\u{1e}").compactMap { record in
+            let fields = record.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: "\u{1f}", omittingEmptySubsequences: false)
+            guard fields.count >= 3 else { return nil }
+            let date = ISO8601DateFormatter().date(from: String(fields[1])) ?? Date.distantPast
+            return Commit(sha: String(fields[0]), date: date, subject: String(fields[2]),
+                          body: fields.count > 3 ? String(fields[3]).trimmingCharacters(in: .whitespacesAndNewlines) : "")
+        }
+    }
+
+    /// `origin`'s URL, if any.
+    public func remoteURL() async -> String? {
+        guard let output = try? await runner.run(["remote", "get-url", "origin"], check: false), output.succeeded else { return nil }
+        let url = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return url.isEmpty ? nil : url
+    }
+
+    /// The checked-out branch.
+    public func currentBranch() async -> String? {
+        guard let output = try? await runner.run(["rev-parse", "--abbrev-ref", "HEAD"], check: false), output.succeeded else { return nil }
+        return output.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Lines added per Markdown file in commits since `since` (the inflow metric, §11).

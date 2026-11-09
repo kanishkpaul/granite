@@ -43,7 +43,7 @@ Legend: ✓ built and tested · ◐ built, needs something from you · — defer
 ## Phase 4: edge features
 | Item | Status | Where |
 |---|---|---|
-| Code decisions: repo scan, ADR import, commit trailers, decision proposals | | `KBCode` |
+| Code decisions: repo scan, ADR import, commit trailers, decision proposals | ✓ | `KBCode`, `App/Code`, spec `code-decisions.md` |
 | Literature-graph expansion (OpenAlex references and cited-by, ranked by your claims) | | |
 | Trails (`kind: trail`), candidate trails as proposals | | |
 | Contradiction detection between held claims | | |

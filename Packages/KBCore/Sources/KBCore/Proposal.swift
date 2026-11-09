@@ -2,6 +2,8 @@ import Foundation
 
 public enum ProposalKind: String, Sendable, Codable, CaseIterable {
     case link, edit, claim, merge, trail, prompt, tag, rule
+    /// A decision-record stub (code decisions, master plan §7 idea 8).
+    case decision
 }
 
 public enum ProposalStatus: String, Sendable, Codable, CaseIterable {
@@ -76,7 +78,7 @@ public struct Proposal: Sendable, Hashable {
     }
 
     /// Kinds that create a new note rather than change an existing one.
-    public var createsNote: Bool { kind == .claim || kind == .trail || kind == .merge && change.removed.isEmpty }
+    public var createsNote: Bool { kind == .claim || kind == .trail || kind == .decision || kind == .merge && change.removed.isEmpty }
 
     public func render() -> String {
         var lines = ["---", "type: proposal", "kind: \(kind.rawValue)", "target: \(FrontmatterEditor.yamlScalar(target))",
@@ -125,6 +127,7 @@ public struct Proposal: Sendable, Hashable {
         var name = target.replacingOccurrences(of: "[[", with: "").replacingOccurrences(of: "]]", with: "")
         name = String(name.split(separator: "|").first ?? Substring(name))
         name = String(name.split(separator: "/").last ?? Substring(name))
+        if name.lowercased().hasSuffix(".md") { name = String(name.dropLast(3)) }
         let safe = name.map { "/\\:*?\"<>|#^[]".contains($0) ? " " : $0 }
         let stem = String(String(safe).prefix(60)).trimmingCharacters(in: .whitespaces)
         return "AI/Proposals/\(stamp) \(kind.rawValue) \(stem.isEmpty ? "note" : stem).md"

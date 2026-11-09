@@ -43,6 +43,10 @@ enum SnapshotMode {
                 for metric in await store.computeMetrics() { NSLog("granite metric: %@ = %@ [%@]", metric.name, metric.value, metric.health.rawValue) }
                 _ = await store.freezeMetrics()
             }
+            if let repo = arguments.firstIndex(of: "--scan-repo").flatMap({ $0 + 1 < arguments.count ? arguments[$0 + 1] : nil }) {
+                await store.addRepo(URL(filePath: repo))
+                NSLog("granite snapshot: %@", store.status)
+            }
             if arguments.contains("--enrich") {
                 await store.enrichOpenPaper()
                 NSLog("granite snapshot: %@", store.status)

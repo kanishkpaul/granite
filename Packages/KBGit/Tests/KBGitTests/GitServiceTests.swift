@@ -54,6 +54,22 @@ final class Repo: @unchecked Sendable {
         #expect(try await Repo(initialize: false).service.linesAdded(since: .distantPast).isEmpty)
     }
 
+    @Test func commitsAndTrailers() async throws {
+        let repo = try await Repo()
+        try repo.put("a.md", "x\n")
+        try await repo.git("add", "-A")
+        try await repo.git("commit", "-q", "-m", "Switch to GRDB\n\nWhy: FTS5.\n\nGranite-Decision: 01JC9Q7Z5W3K8M2R4T6V8X0Y1A")
+        try repo.put("b.md", "y\n")
+        try await repo.git("add", "-A")
+        try await repo.git("commit", "-q", "-m", "Tidy")
+        let commits = try await repo.service.commits(limit: 10)
+        #expect(commits.map(\.subject) == ["Tidy", "Switch to GRDB"])
+        #expect(commits[1].trailers("Granite-Decision") == ["01JC9Q7Z5W3K8M2R4T6V8X0Y1A"] && commits[0].trailers("Granite-Decision").isEmpty)
+        #expect(commits[1].body.hasPrefix("Why: FTS5.") && commits[1].sha.count == 40)
+        #expect(await repo.service.currentBranch() == "main")
+        #expect(await repo.service.remoteURL() == nil)
+    }
+
     @Test func notARepository() async throws {
         let repo = try await Repo(initialize: false)
         #expect(try await repo.service.autoCommit() == .notARepository)

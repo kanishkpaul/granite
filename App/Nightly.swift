@@ -51,6 +51,7 @@ extension VaultStore {
                 openNote(result.path)
             } else {
                 await freezeMetrics()
+                await scanRepos()
                 await suggestLinks()
             }
         } catch {

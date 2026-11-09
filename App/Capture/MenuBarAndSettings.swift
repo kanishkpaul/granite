@@ -34,6 +34,7 @@ struct SettingsView: View {
             LabeledContent("Captures go to:") { Text("Inbox/ (local-only AI label)") }
             GitSettingsSection(git: AppModel.shared.git)
             AISettingsSection()
+            CodeSettingsSection()
         }
         .padding(20)
         .frame(width: 480)

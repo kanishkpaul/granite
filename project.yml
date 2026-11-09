@@ -27,6 +27,8 @@ packages:
     path: Packages/KBPapers
   KBReview:
     path: Packages/KBReview
+  KBCode:
+    path: Packages/KBCode
   KBAI:
     path: Packages/KBAI
   KBAIMLX:
@@ -57,6 +59,7 @@ targets:
       - package: KBGit
       - package: KBPapers
       - package: KBReview
+      - package: KBCode
       - package: KBAI
       - package: KBAIMLX
       - package: KeyboardShortcuts

@@ -22,6 +22,7 @@ import Testing
     @Test func fileNames() {
         #expect(Proposal.fileName(kind: .link, target: "[[Notes/Hybrid: retrieval|alias]]", stamp: "2026-11-09 1432")
                 == "AI/Proposals/2026-11-09 1432 link Hybrid  retrieval.md")
+        #expect(Proposal.fileName(kind: .claim, target: "Notes/New claim.md", stamp: "s") == "AI/Proposals/s claim New claim.md")
     }
 
     @Test func linkGoesUnderRelated() throws {
