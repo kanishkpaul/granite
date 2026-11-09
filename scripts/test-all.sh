@@ -10,8 +10,13 @@ for dir in "$root"/Packages/*(/); do
   (cd "$dir" && swift test) || failed+=("${dir:t}")
 done
 for dir in "$root"/Tools/*(/); do
-  echo "── swift build: ${dir:t}"
-  (cd "$dir" && swift build) || failed+=("${dir:t}")
+  if [[ -d "$dir/Tests" ]]; then
+    echo "── swift test: ${dir:t}"
+    (cd "$dir" && swift test) || failed+=("${dir:t}")
+  else
+    echo "── swift build: ${dir:t}"
+    (cd "$dir" && swift build) || failed+=("${dir:t}")
+  fi
 done
 echo "── Editor: typecheck, vitest, build"
 (cd "$root/Editor" && pnpm install --frozen-lockfile --silent && pnpm typecheck && pnpm test && pnpm build) \

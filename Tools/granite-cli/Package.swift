@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "granite-cli",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS("27.0")],
     products: [
         .executable(name: "granite-cli", targets: ["granite-cli"]),
     ],
@@ -11,13 +11,14 @@ let package = Package(
         .package(path: "../../Packages/KBCore"),
         .package(path: "../../Packages/KBIndex"),
         .package(path: "../../Packages/KBTestSupport"),
+        .package(path: "../../Packages/KBAI"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.8.0"),
     ],
     targets: [
         .executableTarget(
             name: "granite-cli",
             dependencies: [
-                "KBCore", "KBIndex", "KBTestSupport",
+                "KBCore", "KBIndex", "KBTestSupport", "KBAI",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),

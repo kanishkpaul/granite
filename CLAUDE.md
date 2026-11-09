@@ -2,7 +2,7 @@
 
 granite is a personal, native macOS knowledge base. Read `docs/MASTER-PLAN.md` before any feature work; it holds the architecture, schemas, AI layer and roadmap. `docs/research/` holds the research behind it (`[R …]` tags in the plan point there).
 
-Current phase: **0, spikes** (see plan §8). Built: `KBCore`, `KBIndex` (FTS), `KBTestSupport`, `Tools/granite-cli`, `Editor/` (CM6) and a thin `App/` shell with search and editing. Spike B part 1 passed (`docs/decisions/0001`); spike A passed its automated gates (`0003`, manual IME checks pending); spikes C, D and B part 2 are open.
+Current phase: **0, spikes** (see plan §8). Built: `KBCore`, `KBIndex` (FTS), `KBTestSupport`, `KBAI` (route probe only), `Tools/granite-cli`, `Tools/granite-mcp` (read-only), `Editor/` (CM6) and a thin `App/` shell with search and editing. Spike B part 1 passed (`docs/decisions/0001`); spike A passed its automated gates (`0003`, manual IME checks pending); spike D built (`0004`, Claude Code smoke test pending); spikes C and B part 2 are open.
 
 Run `scripts/test-all.sh` (add `--app` to also run the app's tests) before calling work done. After changing `Editor/src`, run `pnpm build` there: the built bundle in `App/Resources/editor/` is committed.
 

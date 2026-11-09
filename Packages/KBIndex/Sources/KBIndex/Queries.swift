@@ -263,3 +263,51 @@ extension IndexDatabase {
         }
     }
 }
+
+/// One indexed note's metadata.
+public struct NoteRecord: Sendable, Hashable {
+    public let path: String
+    public let id: String?
+    public let title: String
+    public let type: String
+    public let origin: String
+    public let aiLabel: String
+    /// Seconds since the reference date (2001-01-01), as stored by the indexer.
+    public let mtime: Double
+
+    public var modified: Date { Date(timeIntervalSinceReferenceDate: mtime) }
+}
+
+extension IndexDatabase {
+    private static let noteColumns = "path, id, title, type, origin, ai_label, mtime"
+
+    private static func record(_ row: Row) -> NoteRecord {
+        NoteRecord(path: row["path"], id: row["id"], title: row["title"], type: row["type"], origin: row["origin"],
+                   aiLabel: row["ai_label"], mtime: row["mtime"])
+    }
+
+    public func note(path: String) throws -> NoteRecord? {
+        try pool.read { db in
+            try Row.fetchOne(db, sql: "SELECT \(Self.noteColumns) FROM objects WHERE path = ?", arguments: [path])
+                .map(Self.record)
+        }
+    }
+
+    /// Looks a note up by its frontmatter `id`. Duplicate ids (copied files) return the shortest path.
+    public func note(id: String) throws -> NoteRecord? {
+        try pool.read { db in
+            try Row.fetchOne(db, sql: "SELECT \(Self.noteColumns) FROM objects WHERE id = ? ORDER BY length(path), path LIMIT 1",
+                             arguments: [id]).map(Self.record)
+        }
+    }
+
+    /// Most recently modified notes first, optionally only those modified at or after `since`.
+    public func recent(limit: Int, since: Date? = nil) throws -> [NoteRecord] {
+        try pool.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT \(Self.noteColumns) FROM objects WHERE mtime >= ? ORDER BY mtime DESC, path LIMIT ?
+                """, arguments: [since?.timeIntervalSinceReferenceDate ?? -Double.greatestFiniteMagnitude, limit])
+            .map(Self.record)
+        }
+    }
+}

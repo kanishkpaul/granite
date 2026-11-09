@@ -11,6 +11,33 @@ public final class IndexDatabase: Sendable {
     /// True when this open created a fresh, empty index (first run or schema bump).
     public let isFresh: Bool
 
+    public enum OpenError: Error, CustomStringConvertible {
+        case missing(String)
+        case outdated(found: Int, expected: Int)
+
+        public var description: String {
+            switch self {
+            case .missing(let path):
+                "no index at \(path): open the vault in granite or run `granite-cli index` first"
+            case .outdated(let found, let expected):
+                "index schema v\(found) is out of date (expected v\(expected)): open the vault in granite or run `granite-cli index`"
+            }
+        }
+    }
+
+    /// Opens an existing index without writing to it (for `granite-mcp`). Never creates or rebuilds.
+    public init(readOnlyAt url: URL) throws {
+        let path = url.path(percentEncoded: false)
+        guard FileManager.default.fileExists(atPath: path) else { throw OpenError.missing(path) }
+        let version = try Self.storedVersion(path: path)
+        guard version == Self.schemaVersion else { throw OpenError.outdated(found: version, expected: Self.schemaVersion) }
+        var configuration = Configuration()
+        configuration.readonly = true
+        self.url = url
+        self.pool = try DatabasePool(path: path, configuration: configuration)
+        self.isFresh = false
+    }
+
     public init(url: URL) throws {
         self.url = url
         let manager = FileManager.default

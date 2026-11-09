@@ -198,6 +198,30 @@ func rowid(_ database: IndexDatabase, _ path: String) throws -> Int64? {
         #expect(try database.unresolvedLinks().first?.count == 2)
     }
 
+    @Test func readOnlyOpenAndLookups() async throws {
+        let temp = try seeded()
+        #expect(throws: IndexDatabase.OpenError.self) { try IndexDatabase(readOnlyAt: temp.dbURL) }
+        let (writable, indexer) = try temp.indexer()
+        _ = try await indexer.reconcile()
+        try temp.bumpMtime("Daily/2026-11-09.md", by: 60)
+        _ = try await indexer.reconcile()
+
+        let reader = try IndexDatabase(readOnlyAt: temp.dbURL)
+        let note = try #require(try reader.note(path: "Private/diary.md"))
+        #expect(note.aiLabel == "local" && note.type == "note")
+        #expect(try reader.note(path: "nope.md") == nil)
+        #expect(try reader.recent(limit: 1).first?.path == "Daily/2026-11-09.md")
+        #expect(try reader.recent(limit: 50, since: Date.distantFuture).isEmpty)
+        #expect(try reader.search("hybrid").isEmpty == false)
+        #expect(throws: (any Error).self) {
+            try reader.pool.write { db in try db.execute(sql: "DELETE FROM objects") }
+        }
+        try await writable.pool.write { db in
+            try db.execute(sql: "UPDATE objects SET id = 'X1' WHERE path = 'Notes/Embedding choice.md'")
+        }
+        #expect(try reader.note(id: "X1")?.path == "Notes/Embedding choice.md")
+    }
+
     @Test func schemaVersionMismatchRebuilds() async throws {
         let temp = try seeded()
         do {

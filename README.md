@@ -167,7 +167,9 @@ granite/
     KBCore/                 vault model, frontmatter, Obsidian-syntax parser, policy, SafeWriter
     KBIndex/                GRDB index.sqlite, reconcile, FTS5 search, backlinks
     KBTestSupport/          deterministic fixture-vault generator
-  Tools/granite-cli/        fixture · index · search · titles · backlinks · stats · eval · parse
+    KBAI/                   model routing (so far: which routes work on this Mac)
+  Tools/granite-cli/        fixture · index · search · titles · backlinks · stats · eval · parse · models
+  Tools/granite-mcp/        read-only MCP server for Claude Code and Claude Desktop
   Tests/AppTests/           app tests (editor bridge round-trip)
   scripts/test-all.sh       swift test, Vitest and the editor build (+ --app for the app's tests)
   docs/
@@ -187,7 +189,14 @@ cd Tools/granite-cli && swift build -c release
 .build/release/granite-cli search --vault /tmp/g50k --db /tmp/g50k-index/index.sqlite some words
 ```
 
-The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBAI`, `KBCode`) arrive with their phases.
+Give Claude Code read-only access (only notes labelled `cloud`; `Private/` is never visible):
+
+```bash
+(cd Tools/granite-mcp && swift build -c release)
+claude mcp add granite -- "$PWD/Tools/granite-mcp/.build/release/granite-mcp" --vault ~/VaultCopy
+```
+
+The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBCode`) arrive with their phases.
 
 ## Research
 

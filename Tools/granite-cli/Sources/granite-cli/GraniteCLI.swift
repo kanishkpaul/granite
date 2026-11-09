@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import KBAI
 import KBCore
 import KBIndex
 import KBTestSupport
@@ -10,7 +11,7 @@ struct GraniteCLI: AsyncParsableCommand {
         commandName: "granite-cli",
         abstract: "Index, search and inspect a granite vault from the terminal.",
         subcommands: [Fixture.self, Index.self, Search.self, Titles.self, Backlinks.self, Stats.self, Eval.self,
-                      Parse.self]
+                      Parse.self, Models.self]
     )
 }
 
@@ -219,6 +220,23 @@ struct Parse: AsyncParsableCommand {
         for block in note.blocks {
             let id = block.blockID.map { " ^\($0)" } ?? ""
             print("block L\(block.startLine)-\(block.endLine) \(block.kind.rawValue)\(id)  \(block.headingPath.isEmpty ? "" : "§ \(block.headingPath)  ")\(block.text.prefix(60).replacingOccurrences(of: "\n", with: " ⏎ "))")
+        }
+    }
+}
+
+struct Models: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Which model routes work on this Mac (on-device, PCC, MLX, Claude).")
+
+    @Flag(help: "Send a fixed one-line prompt to each available route and time it.") var send = false
+
+    func run() async throws {
+        for status in await ModelProbe.run(sendPrompt: send) {
+            var line = "\(status.route.rawValue.padding(toLength: 10, withPad: " ", startingAt: 0)) \(status.available ? "yes" : "no ")  \(status.detail)"
+            if let context = status.contextSize { line += "  context \(context)" }
+            if let ms = status.latencyMs { line += String(format: "  %.0f ms", ms) }
+            if let reply = status.reply { line += "  reply: \(reply.prefix(40))" }
+            print(line)
         }
     }
 }
