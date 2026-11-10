@@ -227,6 +227,10 @@ granite is built on three rounds of research, all in [`docs/research`](docs/rese
 - [02 · Sync, AI and the knowledge corpus](docs/research/reports/02%20Obsidian%20sync%20AI%20and%20knowledge%20corpus.md): free sync, AI agents, retrieval, first principles
 - [03 · Zotero and the native Mac app](docs/research/reports/03%20Zotero%20and%20native%20Mac%20app.md): Zotero 10, language and stack, Mac foundation, AI layer, feature landscape
 
+## License
+
+This project is licensed under the [MIT License](LICENSE). The bundled editor and clipper dependencies have [their own license notices](App/Resources/editor/).
+
 ---
 
 <p align="center"><sub>A personal project. Built slowly, like the rock.</sub></p>
