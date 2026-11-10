@@ -6,6 +6,7 @@ export default defineConfig({
   build: {
     outDir: "../App/Resources/editor",
     emptyOutDir: false,
+    license: { fileName: "clipper-third-party.md" },
     target: "safari18",
     sourcemap: false,
     minify: true,

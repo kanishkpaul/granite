@@ -7,6 +7,7 @@ export default defineConfig({
   build: {
     outDir: "../App/Resources/editor",
     emptyOutDir: true,
+    license: { fileName: "editor-third-party.md" },
     target: "safari18",
     sourcemap: false,
     minify: true,

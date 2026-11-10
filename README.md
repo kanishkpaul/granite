@@ -120,7 +120,7 @@ The vault is an ordinary folder that Obsidian can open. granite never stores kno
 |---|---|---|
 | App | **Swift 6**, SwiftUI + AppKit, macOS 27 | First-class access to Foundation Models, MLX, PDFKit, App Intents and Spotlight. About 85–90% of the code. |
 | Editor | **CodeMirror 6** in a `WKWebView` (TypeScript) | Obsidian-grade live preview at 50k lines, where TextKit 2 still has documented problems with long files. |
-| Index | **GRDB** + SQLite **FTS5** + **sqlite-vec** | One disposable file, keyword plus vector search, rebuilt from Markdown. |
+| Index | **GRDB** + SQLite **FTS5** + an in-memory vector index | One disposable file, keyword plus vector search, rebuilt from Markdown. |
 | Retrieval | BM25 + EmbeddingGemma + Qwen3 reranker, one hop along wikilinks | Hybrid search and reranking cut retrieval failures by up to 67% in Anthropic's tests. Your links are the knowledge graph. |
 | Models | Apple on-device · MLX local · Apple PCC · Claude | Routed per task and per folder privacy label through one `LanguageModelSession` API. |
 | Papers | **Zotero 10** local API (read + write) | Zotero owns capture, metadata, PDFs and citations. granite owns claims, links and synthesis. |
@@ -153,6 +153,25 @@ Every phase has a "done when" test in the [master plan](docs/MASTER-PLAN.md#8-ph
 8. **Precision over volume.** Suggestions run on a budget, and a feature whose suggestions you rarely accept gets switched off.
 
 **Not building:** a schema builder, an infinite canvas as storage, lifelogging, uncited AI answers, a graph hairball, or cloud-only storage.
+
+## Build and run
+
+Use an Apple silicon Mac with macOS 27 and Xcode 27. Install XcodeGen, Node.js 24 and pnpm for the app and editor builds.
+
+```bash
+brew install xcodegen node@24 pnpm
+export PATH="$(brew --prefix node@24)/bin:$PATH"
+(cd Editor && pnpm install --frozen-lockfile && pnpm build)
+xcodegen
+xcodebuild -project granite.xcodeproj -scheme granite -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath .build/app \
+  -skipMacroValidation -skipPackagePluginValidation build
+open .build/app/Build/Products/Debug/granite.app
+```
+
+Use **Open Vault…** to choose a folder for your Markdown notes. Start with an empty folder if you want to try granite on its own. Search and editing work locally without an account. The optional model downloads and cloud integrations follow their own providers' terms.
+
+Run `scripts/test-all.sh` for the Swift packages and editor, or add `--app` for the macOS app tests. The generated editor and clipper bundles include their third-party notices in `App/Resources/editor/`.
 
 ## Repository
 
@@ -199,8 +218,6 @@ Give Claude Code read-only access (only notes labelled `cloud`; `Private/` is ne
 (cd Tools/granite-mcp && swift build -c release)
 claude mcp add granite -- "$PWD/Tools/granite-mcp/.build/release/granite-mcp" --vault ~/VaultCopy
 ```
-
-The remaining packages (`KBReview`, `KBZotero`, `KBCapture`, `KBCode`) arrive with their phases.
 
 ## Research
 
